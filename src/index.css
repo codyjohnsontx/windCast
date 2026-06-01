@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-ink-base text-ink-text font-sans antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-ink-panel border border-ink-line rounded-2xl;
+  }
+
+  .pill {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide;
+  }
+}
+
+.windcast-map-page {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: calc(72px + env(safe-area-inset-bottom));
+  z-index: 0;
+}
+
+.windcast-map-page .leaflet-container {
+  background: #0b1220;
+  font-family: inherit;
+}
+
+.windcast-map-page .leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  padding: 4px;
+}
+
+.windcast-map-page .leaflet-control-attribution {
+  background: rgba(11, 18, 32, 0.7);
+  color: #e5edff;
+}
+
+.windcast-map-page .leaflet-control-attribution a {
+  color: #8aa0c6;
+}
+
+.windcast-map-page .velocity-mouse-position {
+  background: rgba(11, 18, 32, 0.7) !important;
+  color: #e5edff !important;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+}
