@@ -36,7 +36,12 @@ export default function Dashboard() {
             currentScore,
             bestWindow: bestUpcomingHour(forecast, spot, 24),
           } satisfies Row;
-        } catch {
+        } catch (error) {
+          console.error("Failed to load forecast for dashboard spot.", {
+            spotId: spot.id,
+            spotName: spot.name,
+            error,
+          });
           return { spot, bestWindow: null } satisfies Row;
         }
       })

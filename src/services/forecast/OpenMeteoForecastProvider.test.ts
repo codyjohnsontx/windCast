@@ -28,6 +28,7 @@ describe("OpenMeteoForecastProvider", () => {
       vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
+          utc_offset_seconds: -18000,
           hourly: {
             time: ["2026-06-01T13:00", "2026-06-01T12:00"],
             wind_speed_10m: [10, 5],
@@ -43,6 +44,7 @@ describe("OpenMeteoForecastProvider", () => {
     const data = await new OpenMeteoForecastProvider().getHourlyForecast(spot, 2);
 
     expect(data).toHaveLength(2);
+    expect(data[0].time).toBe("2026-06-01T17:00:00.000Z");
     expect(data[0]).toMatchObject({
       windDirection: "N",
       rainChance: 0.2,

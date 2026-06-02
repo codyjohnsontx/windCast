@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+import { beforeEach } from "vitest";
 
 const storage = new Map<string, string>();
 
@@ -14,4 +15,8 @@ Object.defineProperty(window, "localStorage", {
     setItem: (key: string, value: string) => storage.set(key, value),
   },
   configurable: true,
+});
+
+beforeEach(() => {
+  storage.clear();
 });

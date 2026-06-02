@@ -79,6 +79,8 @@ export default function Settings() {
             <button
               key={option.value}
               type="button"
+              aria-label={option.label}
+              aria-pressed={preferences.windUnit === option.value}
               onClick={() => setWindUnit(option.value)}
               className={`h-9 px-3 text-sm font-semibold rounded ${
                 preferences.windUnit === option.value ? "bg-ink-text text-ink-base" : "text-ink-muted"
@@ -120,7 +122,16 @@ export default function Settings() {
         </button>
       </section>
 
-      {message && <div className="card p-3 mb-4 text-sm text-ink-muted">{message}</div>}
+      {message && (
+        <div
+          className="card p-3 mb-4 text-sm text-ink-muted"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          {message}
+        </div>
+      )}
 
       <section className="card p-4 text-sm text-ink-muted">
         Windcast is a focused session planner for kiteboarding, wing foiling, and

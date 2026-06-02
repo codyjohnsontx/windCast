@@ -213,25 +213,34 @@ function spotToForm(spot?: Spot, initialLat?: number, initialLng?: number): Form
 
 export function validate(state: FormState): Errors {
   const errors: Errors = {};
-  const latitude = Number(state.latitude);
-  const longitude = Number(state.longitude);
-  const min = Number(state.minWindMph);
-  const idealLow = Number(state.idealLow);
-  const idealHigh = Number(state.idealHigh);
-  const max = Number(state.maxWindMph);
+  const latitude = parseNumericField(state.latitude, "latitude", errors);
+  const longitude = parseNumericField(state.longitude, "longitude", errors);
+  const min = parseNumericField(state.minWindMph, "minWindMph", errors);
+  const idealLow = parseNumericField(state.idealLow, "idealLow", errors);
+  const idealHigh = parseNumericField(state.idealHigh, "idealHigh", errors);
+  const max = parseNumericField(state.maxWindMph, "maxWindMph", errors);
 
   if (!state.name.trim()) errors.name = "Name is required.";
-  if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) errors.latitude = "Use -90 to 90.";
-  if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) errors.longitude = "Use -180 to 180.";
-  if (!Number.isFinite(min)) errors.minWindMph = "Enter a number.";
-  if (!Number.isFinite(idealLow)) errors.idealLow = "Enter a number.";
-  if (!Number.isFinite(idealHigh)) errors.idealHigh = "Enter a number.";
-  if (!Number.isFinite(max)) errors.maxWindMph = "Enter a number.";
-  if (Number.isFinite(min) && Number.isFinite(idealLow) && min > idealLow) errors.idealLow = "Must be at least minimum.";
-  if (Number.isFinite(idealLow) && Number.isFinite(idealHigh) && idealLow > idealHigh) errors.idealHigh = "Must be at least ideal low.";
-  if (Number.isFinite(idealHigh) && Number.isFinite(max) && idealHigh > max) errors.maxWindMph = "Must be at least ideal high.";
+  if (latitude !== null && (latitude < -90 || latitude > 90)) errors.latitude = "Use -90 to 90.";
+  if (longitude !== null && (longitude < -180 || longitude > 180)) errors.longitude = "Use -180 to 180.";
+  if (min !== null && idealLow !== null && min > idealLow) errors.idealLow = "Must be at least minimum.";
+  if (idealLow !== null && idealHigh !== null && idealLow > idealHigh) errors.idealHigh = "Must be at least ideal low.";
+  if (idealHigh !== null && max !== null && idealHigh > max) errors.maxWindMph = "Must be at least ideal high.";
 
   return errors;
+}
+
+function parseNumericField(value: string, key: keyof Errors, errors: Errors): number | null {
+  if (value.trim() === "") {
+    errors[key] = "Enter a number.";
+    return null;
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    errors[key] = "Enter a number.";
+    return null;
+  }
+  return parsed;
 }
 
 function slugify(value: string): string {

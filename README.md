@@ -91,14 +91,14 @@ To swap in Open-Meteo:
 
 1. Copy `.env.example` to `.env.local` if you use one locally, or create
    `.env.local`.
-2. Set:
+1. Set:
 
-```
+```bash
 VITE_FORECAST_PROVIDER=open-meteo
 VITE_FORECAST_CACHE_TTL_MINUTES=30
 ```
 
-3. Restart `npm run dev`.
+1. Restart `npm run dev`.
 
 Unit conversions live in `src/services/forecast/normalize.ts`
 (`mpsToMph`, `degreesToCompass`, `celsiusToFahrenheit`, `metersToFeet`).

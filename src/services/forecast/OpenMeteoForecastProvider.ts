@@ -51,6 +51,7 @@ export class OpenMeteoForecastProvider implements ForecastProvider {
         throw new Error("Open-Meteo response did not include hourly forecast data");
       }
 
+      const utcOffsetSeconds = payload.utc_offset_seconds ?? 0;
       return hourly.time
         .map((time, index): ForecastHour | null => {
           const windSpeed = hourly.wind_speed_10m?.[index];
@@ -67,7 +68,7 @@ export class OpenMeteoForecastProvider implements ForecastProvider {
           const rainChance = hourly.precipitation_probability?.[index];
           const temperature = hourly.temperature_2m?.[index];
           return {
-            time: new Date(time).toISOString(),
+            time: openMeteoLocalTimeToIso(time, utcOffsetSeconds),
             windSpeedMph: round1(mpsToMph(windSpeed)),
             windGustMph: round1(mpsToMph(windGust)),
             windDirection: degreesToCompass(windDirection),
@@ -85,6 +86,7 @@ export class OpenMeteoForecastProvider implements ForecastProvider {
 }
 
 type OpenMeteoResponse = {
+  utc_offset_seconds?: number;
   hourly?: {
     time?: string[];
     wind_speed_10m?: number[];
@@ -97,4 +99,18 @@ type OpenMeteoResponse = {
 
 function round1(value: number): number {
   return Math.round(value * 10) / 10;
+}
+
+function openMeteoLocalTimeToIso(time: string, utcOffsetSeconds: number): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2})(?::(\d{2}))?$/.exec(time);
+  if (!match) throw new Error(`Invalid Open-Meteo hourly time: ${time}`);
+  const [, year, month, day, hour, minute = "0"] = match;
+  const localAsUtc = Date.UTC(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour),
+    Number(minute)
+  );
+  return new Date(localAsUtc - utcOffsetSeconds * 1000).toISOString();
 }
