@@ -36,7 +36,10 @@ export default function WindcastMap() {
     const timeoutId = window.setTimeout(() => {
       setDefaultMapLayers(layers);
     }, 500);
-    return () => window.clearTimeout(timeoutId);
+    return () => {
+      window.clearTimeout(timeoutId);
+      setDefaultMapLayers(layers);
+    };
   }, [layers, setDefaultMapLayers]);
 
   return (
@@ -93,7 +96,13 @@ function MapToolbar({
       <button type="button" className="button-secondary h-9" onClick={onOpenLayers}>
         <Layers size={16} /> Layers
       </button>
-      <button type="button" className="map-tool" onClick={() => window.dispatchEvent(new Event("windcast:recenter-map"))} title="Recenter saved spots">
+      <button
+        type="button"
+        className="map-tool"
+        onClick={() => window.dispatchEvent(new Event("windcast:recenter-map"))}
+        title="Recenter saved spots"
+        aria-label="Recenter map"
+      >
         <LocateFixed size={16} />
       </button>
       <div className="ml-auto inline-flex items-center gap-1 text-[11px] text-ink-muted">
