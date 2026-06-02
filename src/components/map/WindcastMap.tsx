@@ -16,6 +16,7 @@ export default function WindcastMap() {
   const { preferences, setDefaultMapLayers, setWindParticleDensity } = usePreferences();
   const { layers, toggleLayer } = useMapLayers(preferences.defaultMapLayers);
   const didHydrateLayers = useRef(false);
+  const layersRef = useRef(layers);
   const [timeline, setTimeline] = useState({ dayOffset: 0, hourOffset: 0 });
   const [layerDrawerOpen, setLayerDrawerOpen] = useState(false);
   const [windStatus, setWindStatus] = useState<"loading" | "active" | "error">("loading");
@@ -27,6 +28,7 @@ export default function WindcastMap() {
     preferences.windParticleDensity === "off" ? null : preferences.windParticleDensity;
   const windLayerActive = layers["wind-particles"] && activeWindDensity !== null;
   const displayedWindStatus = windLayerActive ? windStatus : "off";
+  layersRef.current = layers;
 
   useEffect(() => {
     if (!didHydrateLayers.current) {
@@ -36,11 +38,12 @@ export default function WindcastMap() {
     const timeoutId = window.setTimeout(() => {
       setDefaultMapLayers(layers);
     }, 500);
-    return () => {
-      window.clearTimeout(timeoutId);
-      setDefaultMapLayers(layers);
-    };
+    return () => window.clearTimeout(timeoutId);
   }, [layers, setDefaultMapLayers]);
+
+  useEffect(() => {
+    return () => setDefaultMapLayers(layersRef.current);
+  }, [setDefaultMapLayers]);
 
   return (
     <>
