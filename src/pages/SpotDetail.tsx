@@ -1,13 +1,23 @@
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Pencil } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import ConfidenceBadge from "../components/ConfidenceBadge";
 import ForecastHourCard from "../components/ForecastHourCard";
+import ObservationSummary from "../components/ObservationSummary";
 import SportTagList from "../components/SportTagList";
 import { useForecast } from "../hooks/useForecast";
 import { usePreferences } from "../hooks/usePreferences";
 import { useSpots } from "../hooks/useSpots";
+import {
+  calculateForecastConfidence,
+  getObservationProvider,
+  preferTrustedStation,
+  type ForecastConfidence,
+  type ObservationStation,
+  type StationObservation,
+} from "../services/observations";
 import { bestUpcomingHour, scoreHour } from "../utils/sessionScore";
-import { formatDayLabel, formatRange } from "../utils/format";
+import { formatDayLabel, formatRange, formatWind } from "../utils/format";
 
 export default function SpotDetail() {
   const { id } = useParams();
@@ -16,6 +26,11 @@ export default function SpotDetail() {
   const spot = getSpot(id);
   const { data, loading, error, refetch } = useForecast(spot, 48);
   const bestWindow = data && spot ? bestUpcomingHour(data, spot, 48) : null;
+  const currentHour = data?.[0];
+  const currentScore = currentHour && spot ? scoreHour(currentHour, spot) : undefined;
+  const [station, setStation] = useState<ObservationStation | undefined>();
+  const [observation, setObservation] = useState<StationObservation | null>(null);
+  const confidence: ForecastConfidence = calculateForecastConfidence(currentHour, observation);
 
   const grouped = useMemo(() => {
     if (!data) return [];
@@ -28,6 +43,35 @@ export default function SpotDetail() {
     }
     return Array.from(groups.values());
   }, [data]);
+
+  useEffect(() => {
+    if (!spot) return;
+    let cancelled = false;
+    setStation(undefined);
+    setObservation(null);
+    const provider = getObservationProvider();
+    provider
+      .getStationsNear(spot.latitude, spot.longitude, 75)
+      .then(async (stations) => {
+        const nextStation = preferTrustedStation(stations, spot.trustedStationIds);
+        const nextObservation = nextStation
+          ? await provider.getLatestObservation(nextStation)
+          : null;
+        if (!cancelled) {
+          setStation(nextStation);
+          setObservation(nextObservation);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setStation(undefined);
+          setObservation(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [spot]);
 
   if (!spot) {
     return (
@@ -88,16 +132,52 @@ export default function SpotDetail() {
         </div>
       )}
 
-      {!loading && !error && bestWindow && (
+      {!loading && !error && currentHour && currentScore && (
         <section className="card p-4 mb-5">
-          <div className="text-[10px] uppercase tracking-wider text-ink-muted">Best window</div>
-          <div className="mt-1 text-lg font-semibold">
-            {formatDayLabel(bestWindow.hour.time)} at{" "}
-            {new Date(bestWindow.hour.time).toLocaleTimeString(undefined, { hour: "numeric", hour12: true })}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-ink-muted">Decision summary</div>
+              <div className="mt-1 text-xl font-semibold">
+                {decisionPhrase(currentScore, confidence)} · {currentScore.score}/100
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <ConfidenceBadge label={confidence.label} />
+            </div>
           </div>
-          <div className="mt-1 text-sm text-ink-muted">
-            {bestWindow.score.label} · {bestWindow.score.score}/100
+          <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+            <Meta label="Now">
+              {formatWind(currentHour.windSpeedMph, preferences.windUnit)} g{" "}
+              {formatWind(currentHour.windGustMph, preferences.windUnit)} {currentHour.windDirection}
+            </Meta>
+            <Meta label="Best window">
+              {bestWindow
+                ? `${formatDayLabel(bestWindow.hour.time)} ${new Date(
+                    bestWindow.hour.time
+                  ).toLocaleTimeString(undefined, { hour: "numeric", hour12: true })}`
+                : "No usable hours"}
+            </Meta>
           </div>
+          <div className="mt-3">
+            <ObservationSummary
+              station={station}
+              observation={observation}
+              confidence={confidence}
+              windUnit={preferences.windUnit}
+            />
+          </div>
+          {currentScore.reasons.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {currentScore.reasons.map((reason) => (
+                <span
+                  key={reason}
+                  className="rounded-full bg-ink-base/40 px-2 py-0.5 text-[11px] text-ink-muted ring-1 ring-ink-line"
+                >
+                  {reason}
+                </span>
+              ))}
+            </div>
+          )}
         </section>
       )}
 
@@ -120,6 +200,13 @@ export default function SpotDetail() {
       ))}
     </div>
   );
+}
+
+function decisionPhrase(score: ReturnType<typeof scoreHour>, confidence: ForecastConfidence): string {
+  if (score.label === "sketchy" || score.label === "poor") return "Skip";
+  if (confidence.label === "low") return "Verify first";
+  if (score.label === "maybe") return "Worth watching";
+  return "Go window";
 }
 
 function BackLink() {

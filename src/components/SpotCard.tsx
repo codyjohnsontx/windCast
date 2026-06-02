@@ -2,6 +2,12 @@ import { Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import type { ForecastHour, SessionScore, Spot } from "../types";
 import { usePreferences } from "../hooks/usePreferences";
+import type {
+  ForecastConfidence,
+  ObservationStation,
+  StationObservation,
+} from "../services/observations";
+import ConfidenceBadge from "./ConfidenceBadge";
 import ScoreBadge from "./ScoreBadge";
 import SportTagList from "./SportTagList";
 import WindDirectionIcon from "./WindDirectionIcon";
@@ -12,6 +18,9 @@ type Props = {
   currentHour?: ForecastHour;
   currentScore?: SessionScore;
   bestWindow?: { hour: ForecastHour; score: SessionScore } | null;
+  confidence?: ForecastConfidence;
+  observation?: StationObservation | null;
+  station?: ObservationStation;
   loading?: boolean;
 };
 
@@ -20,6 +29,9 @@ export default function SpotCard({
   currentHour,
   currentScore,
   bestWindow,
+  confidence,
+  observation,
+  station,
   loading,
 }: Props) {
   const { preferences } = usePreferences();
@@ -32,6 +44,9 @@ export default function SpotCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-lg font-semibold truncate">{spot.name}</h3>
+          <div className="mt-1 text-sm font-semibold text-ink-muted">
+            {decisionPhrase(currentScore, confidence)}
+          </div>
           <div className="mt-1.5">
             <SportTagList sports={spot.sportTypes} />
           </div>
@@ -41,6 +56,15 @@ export default function SpotCard({
           <ChevronRight className="text-ink-muted" size={20} />
         </div>
       </div>
+
+      {confidence && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <ConfidenceBadge label={confidence.label} />
+          {confidence.reasons[0] && (
+            <span className="text-xs text-ink-muted">{confidence.reasons[0]}</span>
+          )}
+        </div>
+      )}
 
       <div className="mt-4 grid grid-cols-2 gap-3">
         <Stat
@@ -80,8 +104,32 @@ export default function SpotCard({
           }
         />
       </div>
+
+      {!loading && observation && currentHour && (
+        <div className="mt-3 border-t border-ink-line pt-3 text-xs text-ink-muted">
+          Model {formatWind(currentHour.windSpeedMph, preferences.windUnit)} g{" "}
+          {formatWind(currentHour.windGustMph, preferences.windUnit)} {currentHour.windDirection}
+          <br />
+          {station?.name ?? "Station"}{" "}
+          {observation.windSpeedMph !== undefined
+            ? formatWind(observation.windSpeedMph, preferences.windUnit)
+            : "--"}
+          {observation.windGustMph !== undefined && (
+            <> g {formatWind(observation.windGustMph, preferences.windUnit)}</>
+          )}{" "}
+          {observation.windDirection}
+        </div>
+      )}
     </Link>
   );
+}
+
+function decisionPhrase(score: SessionScore | undefined, confidence: ForecastConfidence | undefined): string {
+  if (!score) return "Checking conditions";
+  if (score.label === "sketchy" || score.label === "poor") return "Skip";
+  if (confidence?.label === "low") return "Verify first";
+  if (score.label === "maybe") return "Worth watching";
+  return "Go window";
 }
 
 function Stat({ label, value }: { label: string; value: React.ReactNode }) {

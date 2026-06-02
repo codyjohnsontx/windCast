@@ -2,6 +2,8 @@ export type SportType = "kiteboarding" | "wing_foiling" | "downwind_foiling";
 
 export type SessionScoreLabel = "poor" | "maybe" | "good" | "fire" | "sketchy";
 
+export type SpotEnvironment = "coastal" | "inland";
+
 export type Spot = {
   id: string;
   name: string;
@@ -13,6 +15,8 @@ export type Spot = {
   minWindMph: number;
   idealWindMph: [number, number];
   maxWindMph: number;
+  environment?: SpotEnvironment;
+  trustedStationIds?: string[];
   notes?: string;
 };
 

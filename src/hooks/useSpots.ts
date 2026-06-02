@@ -1,24 +1,37 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { MOCK_SPOTS } from "../data/mockSpots";
 import { COMPASS_OPTIONS, SPORT_OPTIONS } from "../constants";
-import type { SportType, Spot } from "../types";
+import type { SportType, Spot, SpotEnvironment } from "../types";
 
 const STORAGE_KEY = "windcast.spots";
 
 function loadSpots(): Spot[] {
   if (typeof window === "undefined") return MOCK_SPOTS;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as Spot[];
-  } catch {
-    // Fall through to seed.
+  const raw = window.localStorage.getItem(STORAGE_KEY);
+  if (!raw) {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(MOCK_SPOTS));
+    } catch {
+      // Ignore storage failures; we'll still serve in-memory mocks.
+    }
+    return MOCK_SPOTS;
   }
+
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(MOCK_SPOTS));
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return MOCK_SPOTS;
+    const validSpots = parsed.flatMap((item) => {
+      try {
+        return [validateSpot(item)];
+      } catch {
+        return [];
+      }
+    });
+    return validSpots.length ? validSpots : MOCK_SPOTS;
   } catch {
-    // Ignore storage failures; we'll still serve in-memory mocks.
+    // Preserve unparseable user data in localStorage and serve mocks in memory.
+    return MOCK_SPOTS;
   }
-  return MOCK_SPOTS;
 }
 
 function persist(spots: Spot[]): void {
@@ -32,8 +45,13 @@ function persist(spots: Spot[]): void {
 
 export function useSpots() {
   const [spots, setSpots] = useState<Spot[]>(() => loadSpots());
+  const didHydrate = useRef(false);
 
   useEffect(() => {
+    if (!didHydrate.current) {
+      didHydrate.current = true;
+      return;
+    }
     persist(spots);
   }, [spots]);
 
@@ -74,7 +92,7 @@ export function validateSpots(value: unknown): Spot[] {
   return value.map(validateSpot);
 }
 
-function validateSpot(value: unknown): Spot {
+export function validateSpot(value: unknown): Spot {
   if (!value || typeof value !== "object") throw new Error("Every spot must be an object.");
   const spot = value as Partial<Spot>;
   const sportValues = SPORT_OPTIONS.map((option) => option.value);
@@ -101,6 +119,8 @@ function validateSpot(value: unknown): Spot {
     minWindMph: spot.minWindMph,
     idealWindMph: [spot.idealWindMph[0], spot.idealWindMph[1]],
     maxWindMph: spot.maxWindMph,
+    environment: sanitizeEnvironment(spot.environment, spot.id),
+    trustedStationIds: sanitizeStringList(spot.trustedStationIds),
     notes: typeof spot.notes === "string" && spot.notes.trim() ? spot.notes : undefined,
   };
 }
@@ -108,6 +128,17 @@ function validateSpot(value: unknown): Spot {
 function sanitizeList(value: unknown, allowed: readonly string[]): string[] {
   if (!Array.isArray(value)) return [];
   return value.filter((item): item is string => typeof item === "string" && allowed.includes(item));
+}
+
+function sanitizeStringList(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const list = value.filter((item): item is string => typeof item === "string" && item.trim() !== "");
+  return list.length ? list : undefined;
+}
+
+function sanitizeEnvironment(value: unknown, id: string): SpotEnvironment {
+  if (value === "coastal" || value === "inland") return value;
+  return id === "lake-travis" ? "inland" : "coastal";
 }
 
 function isNumber(value: unknown): value is number {

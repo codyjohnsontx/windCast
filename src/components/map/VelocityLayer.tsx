@@ -4,12 +4,38 @@ import L from "leaflet";
 import "leaflet-velocity";
 import { getWindGridProvider } from "../../services/wind-grid";
 import type { WindGridDataset } from "../../services/wind-grid/types";
+import type { WindParticleDensity } from "../../services/layers/types";
 
 type Props = {
+  density?: Exclude<WindParticleDensity, "off">;
   onStatusChange?: (status: "loading" | "active" | "error") => void;
 };
 
-export default function VelocityLayer({ onStatusChange }: Props) {
+const WIND_PARTICLE_PRESETS = {
+  light: {
+    velocityScale: 0.01,
+    particleAge: 45,
+    particleMultiplier: 1 / 650,
+    lineWidth: 0.8,
+    frameRate: 20,
+  },
+  normal: {
+    velocityScale: 0.012,
+    particleAge: 50,
+    particleMultiplier: 1 / 400,
+    lineWidth: 1,
+    frameRate: 22,
+  },
+  dense: {
+    velocityScale: 0.015,
+    particleAge: 60,
+    particleMultiplier: 1 / 220,
+    lineWidth: 1.3,
+    frameRate: 24,
+  },
+};
+
+export default function VelocityLayer({ density = "light", onStatusChange }: Props) {
   const map = useMap();
   const [data, setData] = useState<WindGridDataset | null>(null);
 
@@ -35,16 +61,17 @@ export default function VelocityLayer({ onStatusChange }: Props) {
 
   useEffect(() => {
     if (!data) return;
+    const preset = WIND_PARTICLE_PRESETS[density];
 
     const layer = L.velocityLayer({
       data,
       minVelocity: 0,
       maxVelocity: 22,
-      velocityScale: 0.015,
-      particleAge: 60,
-      particleMultiplier: 1 / 200,
-      lineWidth: 1.4,
-      frameRate: 24,
+      velocityScale: preset.velocityScale,
+      particleAge: preset.particleAge,
+      particleMultiplier: preset.particleMultiplier,
+      lineWidth: preset.lineWidth,
+      frameRate: preset.frameRate,
       colorScale: [
         "rgb(36,104,180)",
         "rgb(60,157,194)",
@@ -78,7 +105,7 @@ export default function VelocityLayer({ onStatusChange }: Props) {
     return () => {
       map.removeLayer(layer);
     };
-  }, [data, map]);
+  }, [data, density, map]);
 
   return null;
 }

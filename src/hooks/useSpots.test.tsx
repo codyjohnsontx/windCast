@@ -30,4 +30,23 @@ describe("useSpots", () => {
   it("rejects invalid imports", () => {
     expect(() => validateSpots([{ ...spot, latitude: 200 }])).toThrow(/invalid latitude/i);
   });
+
+  it("loads valid saved spots even when another saved spot is invalid", () => {
+    window.localStorage.setItem(
+      "windcast.spots",
+      JSON.stringify([spot, { ...spot, id: "bad", latitude: 200 }])
+    );
+
+    const { result } = renderHook(() => useSpots());
+
+    expect(result.current.spots).toEqual([expect.objectContaining(spot)]);
+  });
+
+  it("does not overwrite unparseable saved spot data on mount", () => {
+    window.localStorage.setItem("windcast.spots", "{bad json");
+
+    renderHook(() => useSpots());
+
+    expect(window.localStorage.getItem("windcast.spots")).toBe("{bad json");
+  });
 });
