@@ -22,6 +22,19 @@ afterEach(() => {
 });
 
 describe("OpenMeteoForecastProvider", () => {
+  it("rejects invalid forecast hour counts before fetching", async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+
+    await expect(new OpenMeteoForecastProvider().getHourlyForecast(spot, 0)).rejects.toThrow(
+      RangeError
+    );
+    await expect(new OpenMeteoForecastProvider().getHourlyForecast(spot, 1.5)).rejects.toThrow(
+      RangeError
+    );
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it("maps Open-Meteo hourly data to ForecastHour", async () => {
     vi.stubGlobal(
       "fetch",
@@ -56,6 +69,25 @@ describe("OpenMeteoForecastProvider", () => {
 
   it("throws ForecastError on failed requests", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 500 }));
+    await expect(new OpenMeteoForecastProvider().getHourlyForecast(spot, 1)).rejects.toBeInstanceOf(ForecastError);
+  });
+
+  it("throws ForecastError when utc_offset_seconds is missing", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          hourly: {
+            time: ["2026-06-01T12:00"],
+            wind_speed_10m: [5],
+            wind_gusts_10m: [7],
+            wind_direction_10m: [0],
+          },
+        }),
+      })
+    );
+
     await expect(new OpenMeteoForecastProvider().getHourlyForecast(spot, 1)).rejects.toBeInstanceOf(ForecastError);
   });
 });

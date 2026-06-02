@@ -31,6 +31,8 @@ export class OpenMeteoForecastProvider implements ForecastProvider {
   readonly id = "open-meteo";
 
   async getHourlyForecast(spot: Spot, hours = 48): Promise<ForecastHour[]> {
+    validateHours(hours);
+
     const params = new URLSearchParams({
       latitude: String(spot.latitude),
       longitude: String(spot.longitude),
@@ -58,7 +60,7 @@ export class OpenMeteoForecastProvider implements ForecastProvider {
         throw new Error("Open-Meteo response did not include hourly forecast data");
       }
 
-      const utcOffsetSeconds = payload.utc_offset_seconds ?? 0;
+      const utcOffsetSeconds = validateUtcOffsetSeconds(payload.utc_offset_seconds);
       return hourly.time
         .map((time, index): ForecastHour | null => {
           const windSpeed = hourly.wind_speed_10m?.[index];
@@ -108,6 +110,20 @@ type OpenMeteoResponse = {
 
 function round1(value: number): number {
   return Math.round(value * 10) / 10;
+}
+
+function validateHours(hours: number): void {
+  if (!Number.isInteger(hours) || !Number.isFinite(hours) || hours <= 0) {
+    throw new RangeError("Forecast hours must be a finite integer greater than 0.");
+  }
+}
+
+function validateUtcOffsetSeconds(value: unknown): number {
+  const offset = Number(value);
+  if (!Number.isFinite(offset)) {
+    throw new Error("Open-Meteo response is missing a valid utc_offset_seconds value.");
+  }
+  return offset;
 }
 
 function openMeteoLocalTimeToIso(time: string, utcOffsetSeconds: number): string {
