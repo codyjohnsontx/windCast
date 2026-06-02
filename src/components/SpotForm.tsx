@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import type React from "react";
 import { Save, Trash2 } from "lucide-react";
-import { COMPASS_OPTIONS, SPORT_OPTIONS } from "../constants";
-import type { SportType, Spot } from "../types";
+import { COMPASS_OPTIONS, ENVIRONMENT_OPTIONS, SPORT_OPTIONS } from "../constants";
+import type { SportType, Spot, SpotEnvironment } from "../types";
 
 type Props = {
   initialSpot?: Spot;
@@ -23,6 +23,7 @@ type FormState = {
   maxWindMph: string;
   idealWindDirections: string[];
   unsafeWindDirections: string[];
+  environment: SpotEnvironment;
   notes: string;
 };
 
@@ -54,6 +55,8 @@ export default function SpotForm({ initialSpot, initialLat, initialLng, onSubmit
       minWindMph: Number(state.minWindMph),
       idealWindMph: [Number(state.idealLow), Number(state.idealHigh)],
       maxWindMph: Number(state.maxWindMph),
+      environment: state.environment,
+      trustedStationIds: initialSpot?.trustedStationIds,
       notes: state.notes.trim() || undefined,
     });
   }
@@ -62,6 +65,23 @@ export default function SpotForm({ initialSpot, initialLat, initialLng, onSubmit
     <form onSubmit={submit} className="space-y-4">
       <Field label="Name" error={errors.name}>
         <input className="input" value={state.name} onChange={(event) => update("name", event.target.value)} />
+      </Field>
+
+      <Field label="Spot type">
+        <div className="inline-flex rounded-md border border-ink-line bg-ink-base/40 p-0.5">
+          {ENVIRONMENT_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => update("environment", option.value)}
+              className={`h-9 px-3 text-sm font-semibold rounded ${
+                state.environment === option.value ? "bg-ink-text text-ink-base" : "text-ink-muted"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       </Field>
 
       <div className="grid grid-cols-2 gap-3">
@@ -207,6 +227,7 @@ function spotToForm(spot?: Spot, initialLat?: number, initialLng?: number): Form
     maxWindMph: String(spot?.maxWindMph ?? 35),
     idealWindDirections: spot?.idealWindDirections ?? [],
     unsafeWindDirections: spot?.unsafeWindDirections ?? [],
+    environment: spot?.environment ?? "inland",
     notes: spot?.notes ?? "",
   };
 }

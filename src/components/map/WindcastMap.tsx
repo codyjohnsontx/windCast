@@ -1,104 +1,91 @@
 import { useCallback, useEffect, useState } from "react";
-import { Layers, LocateFixed, MapPin, Wind } from "lucide-react";
-import { MapContainer, TileLayer, useMap } from "react-leaflet";
+import { Layers, LocateFixed } from "lucide-react";
+import { MapContainer, TileLayer, useMap, ZoomControl } from "react-leaflet";
 import SpotMarkerLayer from "./SpotMarkerLayer";
 import VelocityLayer from "./VelocityLayer";
 import ClickForecastLayer from "./ClickForecastLayer";
+import ForecastTimeline, { selectedForecastHour } from "./ForecastTimeline";
+import LayerDrawer from "./LayerDrawer";
+import ObservationMarkerLayer from "./ObservationMarkerLayer";
+import { useMapLayers } from "../../hooks/useMapLayers";
+import { usePreferences } from "../../hooks/usePreferences";
 import { useSpots } from "../../hooks/useSpots";
-
-const HOUR_OPTIONS = [
-  { value: 0, label: "Now" },
-  { value: 3, label: "+3h" },
-  { value: 6, label: "+6h" },
-  { value: 12, label: "+12h" },
-  { value: 24, label: "+24h" },
-];
 
 export default function WindcastMap() {
   const { spots } = useSpots();
-  const [hourOffset, setHourOffset] = useState(0);
-  const [showWind, setShowWind] = useState(true);
-  const [showSpots, setShowSpots] = useState(true);
+  const { preferences, setDefaultMapLayers, setWindParticleDensity } = usePreferences();
+  const { layers, toggleLayer } = useMapLayers(preferences.defaultMapLayers);
+  const [timeline, setTimeline] = useState({ dayOffset: 0, hourOffset: 0 });
+  const [layerDrawerOpen, setLayerDrawerOpen] = useState(false);
   const [windStatus, setWindStatus] = useState<"loading" | "active" | "error">("loading");
   const handleWindStatus = useCallback((status: "loading" | "active" | "error") => {
     setWindStatus(status);
   }, []);
+  const hourOffset = selectedForecastHour(timeline);
+
+  useEffect(() => {
+    setDefaultMapLayers(layers);
+  }, [layers, setDefaultMapLayers]);
 
   return (
     <>
       <MapToolbar
-        hourOffset={hourOffset}
-        onHourOffsetChange={setHourOffset}
-        showWind={showWind}
-        onShowWindChange={setShowWind}
-        showSpots={showSpots}
-        onShowSpotsChange={setShowSpots}
+        onOpenLayers={() => setLayerDrawerOpen(true)}
         windStatus={windStatus}
+        density={preferences.windParticleDensity}
       />
+      <LayerDrawer
+        open={layerDrawerOpen}
+        layers={layers}
+        windDensity={preferences.windParticleDensity}
+        onClose={() => setLayerDrawerOpen(false)}
+        onToggleLayer={toggleLayer}
+        onWindDensityChange={setWindParticleDensity}
+      />
+      <ForecastTimeline value={timeline} onChange={setTimeline} />
       <MapContainer
         center={[28, -95]}
         zoom={6}
+        zoomControl={false}
         scrollWheelZoom
         style={{ width: "100%", height: "100%" }}
       >
+        <ZoomControl position="bottomright" />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        {showWind && <VelocityLayer onStatusChange={handleWindStatus} />}
-        {showSpots && <SpotMarkerLayer hourOffset={hourOffset} />}
+        {layers["wind-particles"] && preferences.windParticleDensity !== "off" && (
+          <VelocityLayer density={preferences.windParticleDensity} onStatusChange={handleWindStatus} />
+        )}
+        {layers.spots && <SpotMarkerLayer hourOffset={hourOffset} />}
+        {layers.observations && <ObservationMarkerLayer />}
         <ClickForecastLayer />
-        <RecenterControl triggerKey={`${spots.length}:${showSpots}`} />
+        <RecenterControl triggerKey={`${spots.length}:${layers.spots}`} />
       </MapContainer>
     </>
   );
 }
 
 function MapToolbar({
-  hourOffset,
-  onHourOffsetChange,
-  showWind,
-  onShowWindChange,
-  showSpots,
-  onShowSpotsChange,
+  onOpenLayers,
   windStatus,
+  density,
 }: {
-  hourOffset: number;
-  onHourOffsetChange: (value: number) => void;
-  showWind: boolean;
-  onShowWindChange: (value: boolean) => void;
-  showSpots: boolean;
-  onShowSpotsChange: (value: boolean) => void;
+  onOpenLayers: () => void;
   windStatus: "loading" | "active" | "error";
+  density: string;
 }) {
   return (
     <div className="absolute left-3 right-3 top-3 z-[500] flex flex-wrap items-center gap-2 rounded-lg border border-ink-line bg-ink-panel/95 p-2 shadow-lg backdrop-blur">
-      <div className="inline-flex rounded-md border border-ink-line bg-ink-base/60 p-0.5">
-        {HOUR_OPTIONS.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            onClick={() => onHourOffsetChange(option.value)}
-            className={`h-8 px-2 text-xs font-semibold rounded ${
-              hourOffset === option.value ? "bg-ink-text text-ink-base" : "text-ink-muted"
-            }`}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-      <button type="button" className={showWind ? "map-tool-active" : "map-tool"} onClick={() => onShowWindChange(!showWind)} title="Toggle wind particles">
-        <Wind size={16} />
-      </button>
-      <button type="button" className={showSpots ? "map-tool-active" : "map-tool"} onClick={() => onShowSpotsChange(!showSpots)} title="Toggle saved spots">
-        <MapPin size={16} />
+      <button type="button" className="button-secondary h-9" onClick={onOpenLayers}>
+        <Layers size={16} /> Layers
       </button>
       <button type="button" className="map-tool" onClick={() => window.dispatchEvent(new Event("windcast:recenter-map"))} title="Recenter saved spots">
         <LocateFixed size={16} />
       </button>
       <div className="ml-auto inline-flex items-center gap-1 text-[11px] text-ink-muted">
-        <Layers size={14} />
-        {showWind ? `Wind ${windStatus}` : "Wind hidden"}
+        Wind {windStatus} · {density}
       </div>
     </div>
   );

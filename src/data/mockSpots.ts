@@ -12,6 +12,8 @@ export const MOCK_SPOTS: Spot[] = [
     minWindMph: 14,
     idealWindMph: [18, 28],
     maxWindMph: 38,
+    environment: "coastal",
+    trustedStationIds: ["ndbc-bib"],
     notes:
       "Shallow flat-water lagoon inside Padre Island National Seashore. Watch for shallow grass beds at the south end. Bring a launching partner — beach can be busy on weekends.",
   },
@@ -26,6 +28,8 @@ export const MOCK_SPOTS: Spot[] = [
     minWindMph: 13,
     idealWindMph: [16, 26],
     maxWindMph: 35,
+    environment: "coastal",
+    trustedStationIds: ["ndbc-tcd"],
     notes:
       "Long jetty into Galveston Bay. South wind is the call — anything north blows you straight into the rocks. Park near the end and walk in.",
   },
@@ -40,6 +44,8 @@ export const MOCK_SPOTS: Spot[] = [
     minWindMph: 12,
     idealWindMph: [15, 25],
     maxWindMph: 32,
+    environment: "coastal",
+    trustedStationIds: ["ndbc-pta"],
     notes:
       "Beach launch with rolling Gulf swell. Great for downwinders along the beach when wind is steady SE. Watch for swimmers in summer.",
   },
@@ -54,6 +60,8 @@ export const MOCK_SPOTS: Spot[] = [
     minWindMph: 12,
     idealWindMph: [16, 26],
     maxWindMph: 34,
+    environment: "coastal",
+    trustedStationIds: ["ndbc-spi"],
     notes:
       "Bay-side flat water or ocean side with swell. Choose your venue based on wind direction. The Flats is great for foiling once tide is up.",
   },
@@ -68,6 +76,8 @@ export const MOCK_SPOTS: Spot[] = [
     minWindMph: 10,
     idealWindMph: [12, 22],
     maxWindMph: 28,
+    environment: "inland",
+    trustedStationIds: ["manual-lt"],
     notes:
       "Inland lake — wind is gustier than the coast. Mansfield Dam area is the usual launch. No swell, smooth chop on a good south day.",
   },

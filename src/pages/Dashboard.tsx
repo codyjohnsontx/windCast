@@ -2,6 +2,13 @@ import { useEffect, useState } from "react";
 import SpotCard from "../components/SpotCard";
 import { useSpots } from "../hooks/useSpots";
 import { getForecastProvider } from "../services/forecast";
+import {
+  calculateForecastConfidence,
+  getObservationProvider,
+  type ForecastConfidence,
+  type ObservationStation,
+  type StationObservation,
+} from "../services/observations";
 import { bestUpcomingHour, scoreHour } from "../utils/sessionScore";
 import type { ForecastHour, SessionScore, Spot } from "../types";
 
@@ -10,6 +17,9 @@ type Row = {
   currentHour?: ForecastHour;
   currentScore?: SessionScore;
   bestWindow: { hour: ForecastHour; score: SessionScore } | null;
+  confidence?: ForecastConfidence;
+  observation?: StationObservation | null;
+  station?: ObservationStation;
 };
 
 export default function Dashboard() {
@@ -23,6 +33,7 @@ export default function Dashboard() {
     setError(null);
 
     const provider = getForecastProvider();
+    const observationProvider = getObservationProvider();
 
     Promise.all(
       spots.map(async (spot) => {
@@ -30,11 +41,18 @@ export default function Dashboard() {
           const forecast = await provider.getHourlyForecast(spot, 24);
           const currentHour = forecast[0];
           const currentScore = currentHour ? scoreHour(currentHour, spot) : undefined;
+          const stations = await observationProvider.getStationsNear(spot.latitude, spot.longitude, 75);
+          const station = preferTrustedStation(stations, spot.trustedStationIds);
+          const observation = station ? await observationProvider.getLatestObservation(station) : null;
+          const confidence = calculateForecastConfidence(currentHour, observation);
           return {
             spot,
             currentHour,
             currentScore,
             bestWindow: bestUpcomingHour(forecast, spot, 24),
+            confidence,
+            observation,
+            station,
           } satisfies Row;
         } catch (error) {
           console.error("Failed to load forecast for dashboard spot.", {
@@ -42,12 +60,16 @@ export default function Dashboard() {
             spotName: spot.name,
             error,
           });
-          return { spot, bestWindow: null } satisfies Row;
+          return {
+            spot,
+            bestWindow: null,
+            confidence: { label: "unknown", reasons: ["Forecast unavailable"] },
+          } satisfies Row;
         }
       })
     )
       .then((result) => {
-        if (!cancelled) setRows(result);
+        if (!cancelled) setRows(sortRows(result));
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err : new Error(String(err)));
@@ -81,6 +103,9 @@ export default function Dashboard() {
             currentHour={row.currentHour}
             currentScore={row.currentScore}
             bestWindow={row.bestWindow}
+            confidence={row.confidence}
+            observation={row.observation}
+            station={row.station}
             loading={rows === null}
           />
         ))}
@@ -92,4 +117,39 @@ export default function Dashboard() {
       </div>
     </div>
   );
+}
+
+function preferTrustedStation(
+  stations: ObservationStation[],
+  trustedStationIds: string[] | undefined
+): ObservationStation | undefined {
+  if (trustedStationIds?.length) {
+    const trusted = stations.find((station) => trustedStationIds.includes(station.id));
+    if (trusted) return trusted;
+  }
+  return stations[0];
+}
+
+function sortRows(rows: Row[]): Row[] {
+  return rows.slice().sort((a, b) => {
+    const aSketchy = a.currentScore?.label === "sketchy" ? 1 : 0;
+    const bSketchy = b.currentScore?.label === "sketchy" ? 1 : 0;
+    if (aSketchy !== bSketchy) return aSketchy - bSketchy;
+    const scoreDiff = (b.currentScore?.score ?? -1) - (a.currentScore?.score ?? -1);
+    if (scoreDiff !== 0) return scoreDiff;
+    const confidenceDiff = confidenceRank(b.confidence?.label) - confidenceRank(a.confidence?.label);
+    if (confidenceDiff !== 0) return confidenceDiff;
+    return (bestTime(a) ?? Infinity) - (bestTime(b) ?? Infinity);
+  });
+}
+
+function confidenceRank(label: ForecastConfidence["label"] | undefined): number {
+  if (label === "high") return 3;
+  if (label === "medium") return 2;
+  if (label === "low") return 1;
+  return 0;
+}
+
+function bestTime(row: Row): number | null {
+  return row.bestWindow ? new Date(row.bestWindow.hour.time).getTime() : null;
 }

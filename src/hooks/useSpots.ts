@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { MOCK_SPOTS } from "../data/mockSpots";
 import { COMPASS_OPTIONS, SPORT_OPTIONS } from "../constants";
-import type { SportType, Spot } from "../types";
+import type { SportType, Spot, SpotEnvironment } from "../types";
 
 const STORAGE_KEY = "windcast.spots";
 
@@ -9,7 +9,7 @@ function loadSpots(): Spot[] {
   if (typeof window === "undefined") return MOCK_SPOTS;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as Spot[];
+    if (raw) return validateSpots(JSON.parse(raw));
   } catch {
     // Fall through to seed.
   }
@@ -101,6 +101,8 @@ function validateSpot(value: unknown): Spot {
     minWindMph: spot.minWindMph,
     idealWindMph: [spot.idealWindMph[0], spot.idealWindMph[1]],
     maxWindMph: spot.maxWindMph,
+    environment: sanitizeEnvironment(spot.environment, spot.id),
+    trustedStationIds: sanitizeStringList(spot.trustedStationIds),
     notes: typeof spot.notes === "string" && spot.notes.trim() ? spot.notes : undefined,
   };
 }
@@ -108,6 +110,17 @@ function validateSpot(value: unknown): Spot {
 function sanitizeList(value: unknown, allowed: readonly string[]): string[] {
   if (!Array.isArray(value)) return [];
   return value.filter((item): item is string => typeof item === "string" && allowed.includes(item));
+}
+
+function sanitizeStringList(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const list = value.filter((item): item is string => typeof item === "string" && item.trim() !== "");
+  return list.length ? list : undefined;
+}
+
+function sanitizeEnvironment(value: unknown, id: string): SpotEnvironment {
+  if (value === "coastal" || value === "inland") return value;
+  return id === "lake-travis" ? "inland" : "coastal";
 }
 
 function isNumber(value: unknown): value is number {
