@@ -5,6 +5,8 @@ import App from "./App";
 import Dashboard from "./pages/Dashboard";
 import Spots from "./pages/Spots";
 import SpotDetail from "./pages/SpotDetail";
+import SpotEdit from "./pages/SpotEdit";
+import SpotNew from "./pages/SpotNew";
 import Settings from "./pages/Settings";
 import Map from "./pages/Map";
 import "leaflet/dist/leaflet.css";
@@ -13,13 +15,15 @@ import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
         <Route element={<App />}>
           <Route index element={<Dashboard />} />
           <Route path="map" element={<Map />} />
           <Route path="spots" element={<Spots />} />
+          <Route path="spots/new" element={<SpotNew />} />
           <Route path="spots/:id" element={<SpotDetail />} />
+          <Route path="spots/:id/edit" element={<SpotEdit />} />
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>

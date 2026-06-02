@@ -1,18 +1,21 @@
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Pencil } from "lucide-react";
 import { useMemo } from "react";
 import ForecastHourCard from "../components/ForecastHourCard";
 import SportTagList from "../components/SportTagList";
 import { useForecast } from "../hooks/useForecast";
+import { usePreferences } from "../hooks/usePreferences";
 import { useSpots } from "../hooks/useSpots";
-import { scoreHour } from "../utils/sessionScore";
+import { bestUpcomingHour, scoreHour } from "../utils/sessionScore";
 import { formatDayLabel, formatRange } from "../utils/format";
 
 export default function SpotDetail() {
   const { id } = useParams();
   const { getSpot } = useSpots();
+  const { preferences } = usePreferences();
   const spot = getSpot(id);
   const { data, loading, error, refetch } = useForecast(spot, 48);
+  const bestWindow = data && spot ? bestUpcomingHour(data, spot, 48) : null;
 
   const grouped = useMemo(() => {
     if (!data) return [];
@@ -39,13 +42,22 @@ export default function SpotDetail() {
     <div>
       <BackLink />
       <header className="mt-3 mb-5">
-        <h1 className="text-2xl font-bold">{spot.name}</h1>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold truncate">{spot.name}</h1>
+          </div>
+          <Link to={`/spots/${spot.id}/edit`} className="icon-button" aria-label="Edit spot">
+            <Pencil size={18} />
+          </Link>
+        </div>
         <div className="mt-2">
           <SportTagList sports={spot.sportTypes} />
         </div>
         <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-          <Meta label="Ideal wind">{formatRange(spot.idealWindMph[0], spot.idealWindMph[1])}</Meta>
-          <Meta label="Min / Max">{spot.minWindMph} / {spot.maxWindMph} mph</Meta>
+          <Meta label="Ideal wind">{formatRange(spot.idealWindMph[0], spot.idealWindMph[1], preferences.windUnit)}</Meta>
+          <Meta label="Min / Max">
+            {formatRange(spot.minWindMph, spot.maxWindMph, preferences.windUnit)}
+          </Meta>
           <Meta label="Ideal direction">
             {spot.idealWindDirections.join(" · ") || "—"}
           </Meta>
@@ -76,6 +88,19 @@ export default function SpotDetail() {
         </div>
       )}
 
+      {!loading && !error && bestWindow && (
+        <section className="card p-4 mb-5">
+          <div className="text-[10px] uppercase tracking-wider text-ink-muted">Best window</div>
+          <div className="mt-1 text-lg font-semibold">
+            {formatDayLabel(bestWindow.hour.time)} at{" "}
+            {new Date(bestWindow.hour.time).toLocaleTimeString(undefined, { hour: "numeric", hour12: true })}
+          </div>
+          <div className="mt-1 text-sm text-ink-muted">
+            {bestWindow.score.label} · {bestWindow.score.score}/100
+          </div>
+        </section>
+      )}
+
       {!loading && !error && grouped.map((day) => (
         <section key={day[0].time} className="mb-6">
           <h2 className="text-xs uppercase tracking-wider text-ink-muted mb-2">
@@ -87,6 +112,7 @@ export default function SpotDetail() {
                 key={hour.time}
                 hour={hour}
                 score={scoreHour(hour, spot)}
+                windUnit={preferences.windUnit}
               />
             ))}
           </div>

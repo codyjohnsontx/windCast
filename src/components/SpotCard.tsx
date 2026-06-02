@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import type { ForecastHour, SessionScore, Spot } from "../types";
+import { usePreferences } from "../hooks/usePreferences";
 import ScoreBadge from "./ScoreBadge";
 import SportTagList from "./SportTagList";
 import WindDirectionIcon from "./WindDirectionIcon";
@@ -21,6 +22,8 @@ export default function SpotCard({
   bestWindow,
   loading,
 }: Props) {
+  const { preferences } = usePreferences();
+
   return (
     <Link
       to={`/spots/${spot.id}`}
@@ -44,12 +47,12 @@ export default function SpotCard({
           label="Now"
           value={
             loading ? (
-              "—"
+              <span className="skeleton inline-block h-5 w-28" />
             ) : currentHour ? (
               <span className="inline-flex items-center gap-1.5">
-                {formatWind(currentHour.windSpeedMph)}
+                {formatWind(currentHour.windSpeedMph, preferences.windUnit)}
                 <span className="text-ink-muted text-sm">
-                  g {Math.round(currentHour.windGustMph)}
+                  g {formatWind(currentHour.windGustMph, preferences.windUnit)}
                 </span>
                 <WindDirectionIcon direction={currentHour.windDirection} size={14} />
                 <span className="text-ink-muted text-sm">{currentHour.windDirection}</span>
@@ -63,7 +66,7 @@ export default function SpotCard({
           label="Best window"
           value={
             loading ? (
-              "—"
+              <span className="skeleton inline-block h-5 w-32" />
             ) : bestWindow ? (
               <span className="inline-flex items-center gap-1.5">
                 <ScoreBadge label={bestWindow.score.label} size="sm" />

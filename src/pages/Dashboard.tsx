@@ -26,15 +26,24 @@ export default function Dashboard() {
 
     Promise.all(
       spots.map(async (spot) => {
-        const forecast = await provider.getHourlyForecast(spot, 24);
-        const currentHour = forecast[0];
-        const currentScore = currentHour ? scoreHour(currentHour, spot) : undefined;
-        return {
-          spot,
-          currentHour,
-          currentScore,
-          bestWindow: bestUpcomingHour(forecast, spot, 24),
-        } satisfies Row;
+        try {
+          const forecast = await provider.getHourlyForecast(spot, 24);
+          const currentHour = forecast[0];
+          const currentScore = currentHour ? scoreHour(currentHour, spot) : undefined;
+          return {
+            spot,
+            currentHour,
+            currentScore,
+            bestWindow: bestUpcomingHour(forecast, spot, 24),
+          } satisfies Row;
+        } catch (error) {
+          console.error("Failed to load forecast for dashboard spot.", {
+            spotId: spot.id,
+            spotName: spot.name,
+            error,
+          });
+          return { spot, bestWindow: null } satisfies Row;
+        }
       })
     )
       .then((result) => {
