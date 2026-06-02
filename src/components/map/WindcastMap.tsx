@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Layers, LocateFixed } from "lucide-react";
 import { MapContainer, TileLayer, useMap, ZoomControl } from "react-leaflet";
 import SpotMarkerLayer from "./SpotMarkerLayer";
@@ -15,6 +15,7 @@ export default function WindcastMap() {
   const { spots } = useSpots();
   const { preferences, setDefaultMapLayers, setWindParticleDensity } = usePreferences();
   const { layers, toggleLayer } = useMapLayers(preferences.defaultMapLayers);
+  const didHydrateLayers = useRef(false);
   const [timeline, setTimeline] = useState({ dayOffset: 0, hourOffset: 0 });
   const [layerDrawerOpen, setLayerDrawerOpen] = useState(false);
   const [windStatus, setWindStatus] = useState<"loading" | "active" | "error">("loading");
@@ -28,7 +29,14 @@ export default function WindcastMap() {
   const displayedWindStatus = windLayerActive ? windStatus : "off";
 
   useEffect(() => {
-    setDefaultMapLayers(layers);
+    if (!didHydrateLayers.current) {
+      didHydrateLayers.current = true;
+      return;
+    }
+    const timeoutId = window.setTimeout(() => {
+      setDefaultMapLayers(layers);
+    }, 500);
+    return () => window.clearTimeout(timeoutId);
   }, [layers, setDefaultMapLayers]);
 
   return (
