@@ -2,6 +2,8 @@ import type { ForecastHour, Spot } from "../../types";
 import { ForecastError, type ForecastProvider } from "./types";
 import { celsiusToFahrenheit, degreesToCompass, mpsToMph } from "./normalize";
 
+const REQUEST_TIMEOUT_MS = 10_000;
+
 /**
  * Open-Meteo provider stub.
  *
@@ -39,8 +41,13 @@ export class OpenMeteoForecastProvider implements ForecastProvider {
       timezone: "auto",
     });
 
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
     try {
-      const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`);
+      const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`, {
+        signal: controller.signal,
+      });
       if (!response.ok) {
         throw new Error(`Open-Meteo returned ${response.status}`);
       }
@@ -81,6 +88,8 @@ export class OpenMeteoForecastProvider implements ForecastProvider {
         .slice(0, hours);
     } catch (err) {
       throw new ForecastError("Could not load Open-Meteo forecast.", this.id, err);
+    } finally {
+      window.clearTimeout(timeoutId);
     }
   }
 }
