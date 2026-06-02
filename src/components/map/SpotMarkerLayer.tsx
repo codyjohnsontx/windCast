@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import type { ForecastHour, SessionScore, Spot } from "../../types";
 import type { SessionScoreLabel } from "../../types";
 import { useSpots } from "../../hooks/useSpots";
+import { usePreferences } from "../../hooks/usePreferences";
 import { getForecastProvider } from "../../services/forecast";
 import { scoreHour } from "../../utils/sessionScore";
 import { formatWind } from "../../utils/format";
@@ -46,8 +47,13 @@ type SpotState = {
   score?: SessionScore;
 };
 
-export default function SpotMarkerLayer() {
+type Props = {
+  hourOffset: number;
+};
+
+export default function SpotMarkerLayer({ hourOffset }: Props) {
   const { spots } = useSpots();
+  const { preferences } = usePreferences();
   const [states, setStates] = useState<SpotState[]>(spots.map((spot) => ({ spot })));
 
   useEffect(() => {
@@ -56,8 +62,8 @@ export default function SpotMarkerLayer() {
     Promise.all(
       spots.map(async (spot) => {
         try {
-          const hours = await provider.getHourlyForecast(spot, 1);
-          const current = hours[0];
+          const hours = await provider.getHourlyForecast(spot, hourOffset + 1);
+          const current = hours[hourOffset] ?? hours[0];
           return {
             spot,
             current,
@@ -73,7 +79,7 @@ export default function SpotMarkerLayer() {
     return () => {
       cancelled = true;
     };
-  }, [spots]);
+  }, [spots, hourOffset]);
 
   return (
     <>
@@ -91,24 +97,34 @@ export default function SpotMarkerLayer() {
                 )}
                 {current && (
                   <div style={{ marginTop: 6, color: "#334155" }}>
-                    {formatWind(current.windSpeedMph)}{" "}
+                    {formatWind(current.windSpeedMph, preferences.windUnit)}{" "}
                     <span style={{ opacity: 0.7 }}>
-                      g {Math.round(current.windGustMph)} · {current.windDirection}
+                      g {formatWind(current.windGustMph, preferences.windUnit)} · {current.windDirection}
                     </span>
                   </div>
                 )}
-                <Link
-                  to={`/spots/${spot.id}`}
-                  style={{
-                    display: "inline-block",
-                    marginTop: 8,
-                    color: "#2563eb",
-                    fontWeight: 500,
-                    textDecoration: "underline",
-                  }}
-                >
-                  View spot
-                </Link>
+                <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+                  <Link
+                    to={`/spots/${spot.id}`}
+                    style={{
+                      color: "#2563eb",
+                      fontWeight: 500,
+                      textDecoration: "underline",
+                    }}
+                  >
+                    View spot
+                  </Link>
+                  <Link
+                    to={`/spots/${spot.id}/edit`}
+                    style={{
+                      color: "#2563eb",
+                      fontWeight: 500,
+                      textDecoration: "underline",
+                    }}
+                  >
+                    Edit
+                  </Link>
+                </div>
               </div>
             </Popup>
           </Marker>

@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Popup, useMapEvents } from "react-leaflet";
 import type { LatLng } from "leaflet";
+import { Link } from "react-router-dom";
 import { getForecastProvider } from "../../services/forecast";
+import { usePreferences } from "../../hooks/usePreferences";
 import type { ForecastHour, Spot } from "../../types";
 import { formatWind } from "../../utils/format";
 
@@ -22,6 +24,7 @@ function ephemeralSpotAt(lat: number, lng: number): Spot {
 }
 
 export default function ClickForecastLayer() {
+  const { preferences } = usePreferences();
   const [latlng, setLatLng] = useState<LatLng | null>(null);
   const [hour, setHour] = useState<ForecastHour | null>(null);
   const [loading, setLoading] = useState(false);
@@ -64,9 +67,9 @@ export default function ClickForecastLayer() {
         {loading && <div style={{ marginTop: 6, color: "#64748b" }}>Loading…</div>}
         {!loading && hour && (
           <div style={{ marginTop: 6, color: "#334155" }}>
-            {formatWind(hour.windSpeedMph)}{" "}
+            {formatWind(hour.windSpeedMph, preferences.windUnit)}{" "}
             <span style={{ opacity: 0.7 }}>
-              g {Math.round(hour.windGustMph)} · {hour.windDirection}
+              g {formatWind(hour.windGustMph, preferences.windUnit)} · {hour.windDirection}
             </span>
             {hour.rainChance !== undefined && (
               <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
@@ -78,6 +81,18 @@ export default function ClickForecastLayer() {
         {!loading && !hour && (
           <div style={{ marginTop: 6, color: "#64748b" }}>No forecast available.</div>
         )}
+        <Link
+          to={`/spots/new?lat=${latlng.lat.toFixed(5)}&lng=${latlng.lng.toFixed(5)}`}
+          style={{
+            display: "inline-block",
+            marginTop: 8,
+            color: "#2563eb",
+            fontWeight: 500,
+            textDecoration: "underline",
+          }}
+        >
+          Save this spot
+        </Link>
       </div>
     </Popup>
   );

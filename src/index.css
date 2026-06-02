@@ -17,11 +17,51 @@
 
 @layer components {
   .card {
-    @apply bg-ink-panel border border-ink-line rounded-2xl;
+    @apply bg-ink-panel border border-ink-line rounded-lg;
   }
 
   .pill {
     @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide;
+  }
+
+  .input {
+    @apply w-full rounded-md border border-ink-line bg-ink-base/60 px-3 py-2 text-sm text-ink-text outline-none transition focus:border-ink-muted;
+  }
+
+  .choice {
+    @apply inline-flex items-center gap-2 rounded-md border border-ink-line bg-ink-base/40 px-3 py-2 text-sm text-ink-muted;
+  }
+
+  .choice input {
+    @apply accent-score-good;
+  }
+
+  .button-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-md bg-ink-text px-3 py-2 text-sm font-semibold text-ink-base active:opacity-80 disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .button-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-md border border-ink-line bg-ink-base/50 px-3 py-2 text-sm font-semibold text-ink-text active:opacity-80;
+  }
+
+  .button-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-md border border-score-sketchy/50 bg-score-sketchy/10 px-3 py-2 text-sm font-semibold text-score-sketchy active:opacity-80;
+  }
+
+  .icon-button {
+    @apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-ink-line bg-ink-panel text-ink-text active:opacity-80;
+  }
+
+  .skeleton {
+    @apply rounded bg-ink-line/80 animate-pulse;
+  }
+
+  .map-tool {
+    @apply inline-flex h-8 w-8 items-center justify-center rounded-md border border-ink-line bg-ink-base/50 text-ink-muted active:opacity-80;
+  }
+
+  .map-tool-active {
+    @apply inline-flex h-8 w-8 items-center justify-center rounded-md border border-score-good/50 bg-score-good/15 text-score-good active:opacity-80;
   }
 }
 

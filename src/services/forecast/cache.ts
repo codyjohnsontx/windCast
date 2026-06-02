@@ -39,7 +39,7 @@ export class CachedForecastProvider implements ForecastProvider {
   }
 
   private cacheKey(spot: Spot, hours: number): string {
-    return `windcast.forecast.${this.inner.id}.${spot.id}.${hours}`;
+    return `windcast.forecast.${this.inner.id}.${spot.id}.${spot.latitude.toFixed(4)}.${spot.longitude.toFixed(4)}.${hours}`;
   }
 
   private readCache(key: string): CacheEntry | null {
@@ -57,6 +57,21 @@ export class CachedForecastProvider implements ForecastProvider {
     } catch {
       // Storage may be full or disabled; silently degrade to no-cache.
     }
+  }
+}
+
+export function clearForecastCache(
+  storage: Storage | null = typeof window !== "undefined" ? window.localStorage : null
+): void {
+  if (!storage) return;
+  const prefix = "windcast.forecast.";
+  try {
+    for (let i = storage.length - 1; i >= 0; i--) {
+      const key = storage.key(i);
+      if (key?.startsWith(prefix)) storage.removeItem(key);
+    }
+  } catch {
+    // Storage may be disabled; cache clearing is best effort.
   }
 }
 

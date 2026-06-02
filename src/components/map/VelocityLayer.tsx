@@ -5,24 +5,33 @@ import "leaflet-velocity";
 import { getWindGridProvider } from "../../services/wind-grid";
 import type { WindGridDataset } from "../../services/wind-grid/types";
 
-export default function VelocityLayer() {
+type Props = {
+  onStatusChange?: (status: "loading" | "active" | "error") => void;
+};
+
+export default function VelocityLayer({ onStatusChange }: Props) {
   const map = useMap();
   const [data, setData] = useState<WindGridDataset | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    onStatusChange?.("loading");
     getWindGridProvider()
       .getWindGrid()
       .then((result) => {
-        if (!cancelled) setData(result);
+        if (!cancelled) {
+          setData(result);
+          onStatusChange?.("active");
+        }
       })
       .catch((err) => {
         console.warn("WindGrid load failed:", err);
+        if (!cancelled) onStatusChange?.("error");
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [onStatusChange]);
 
   useEffect(() => {
     if (!data) return;
@@ -56,10 +65,10 @@ export default function VelocityLayer() {
       displayOptions: {
         velocityType: "Wind",
         position: "bottomleft",
-        emptyString: "No wind data",
+        emptyString: "Hover map for wind",
         angleConvention: "bearingCW",
         displayPosition: "bottomleft",
-        displayEmptyString: "No wind data",
+        displayEmptyString: "Hover map for wind",
         speedUnit: "m/s",
       },
     });
