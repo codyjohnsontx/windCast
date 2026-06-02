@@ -51,7 +51,7 @@ export default function ObservationSummary({
         <div className="mt-1 text-xs text-ink-muted">
           {formatAge(observation.observedAt)}
           {confidence.windSpeedDeltaMph !== undefined && (
-            <> · model delta {Math.round(confidence.windSpeedDeltaMph)} mph</>
+            <> · model delta {formatWind(confidence.windSpeedDeltaMph, windUnit)}</>
           )}
           {confidence.windDirectionDeltaDegrees !== undefined && (
             <> · {Math.round(confidence.windDirectionDeltaDegrees)} deg</>

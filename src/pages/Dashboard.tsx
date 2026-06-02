@@ -5,6 +5,7 @@ import { getForecastProvider } from "../services/forecast";
 import {
   calculateForecastConfidence,
   getObservationProvider,
+  preferTrustedStation,
   type ForecastConfidence,
   type ObservationStation,
   type StationObservation,
@@ -37,23 +38,9 @@ export default function Dashboard() {
 
     Promise.all(
       spots.map(async (spot) => {
+        let forecast: ForecastHour[];
         try {
-          const forecast = await provider.getHourlyForecast(spot, 24);
-          const currentHour = forecast[0];
-          const currentScore = currentHour ? scoreHour(currentHour, spot) : undefined;
-          const stations = await observationProvider.getStationsNear(spot.latitude, spot.longitude, 75);
-          const station = preferTrustedStation(stations, spot.trustedStationIds);
-          const observation = station ? await observationProvider.getLatestObservation(station) : null;
-          const confidence = calculateForecastConfidence(currentHour, observation);
-          return {
-            spot,
-            currentHour,
-            currentScore,
-            bestWindow: bestUpcomingHour(forecast, spot, 24),
-            confidence,
-            observation,
-            station,
-          } satisfies Row;
+          forecast = await provider.getHourlyForecast(spot, 24);
         } catch (error) {
           console.error("Failed to load forecast for dashboard spot.", {
             spotId: spot.id,
@@ -66,6 +53,34 @@ export default function Dashboard() {
             confidence: { label: "unknown", reasons: ["Forecast unavailable"] },
           } satisfies Row;
         }
+
+        const currentHour = forecast[0];
+        const currentScore = currentHour ? scoreHour(currentHour, spot) : undefined;
+        const bestWindow = bestUpcomingHour(forecast, spot, 24);
+        let station: ObservationStation | undefined;
+        let observation: StationObservation | null = null;
+
+        try {
+          const stations = await observationProvider.getStationsNear(spot.latitude, spot.longitude, 75);
+          station = preferTrustedStation(stations, spot.trustedStationIds);
+          observation = station ? await observationProvider.getLatestObservation(station) : null;
+        } catch (error) {
+          console.error("Failed to load observations for dashboard spot.", {
+            spotId: spot.id,
+            spotName: spot.name,
+            error,
+          });
+        }
+
+        return {
+          spot,
+          currentHour,
+          currentScore,
+          bestWindow,
+          confidence: calculateForecastConfidence(currentHour, observation),
+          observation,
+          station,
+        } satisfies Row;
       })
     )
       .then((result) => {
@@ -117,17 +132,6 @@ export default function Dashboard() {
       </div>
     </div>
   );
-}
-
-function preferTrustedStation(
-  stations: ObservationStation[],
-  trustedStationIds: string[] | undefined
-): ObservationStation | undefined {
-  if (trustedStationIds?.length) {
-    const trusted = stations.find((station) => trustedStationIds.includes(station.id));
-    if (trusted) return trusted;
-  }
-  return stations[0];
 }
 
 function sortRows(rows: Row[]): Row[] {

@@ -39,6 +39,15 @@ describe("calculateForecastConfidence", () => {
     expect(calculateForecastConfidence(forecast, observation({}), now).label).toBe("high");
   });
 
+  it("returns low when one confidence metric materially disagrees", () => {
+    const result = calculateForecastConfidence(
+      forecast,
+      observation({ windSpeedMph: 17, windDirection: "NW" }),
+      now
+    );
+    expect(result.label).toBe("low");
+  });
+
   it("returns low when forecast and observation materially disagree", () => {
     const result = calculateForecastConfidence(
       forecast,

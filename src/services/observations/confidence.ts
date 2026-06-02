@@ -54,7 +54,7 @@ export function calculateForecastConfidence(
     };
   }
 
-  if (windSpeedDeltaMph <= 8 || windDirectionDeltaDegrees <= 45) {
+  if (windSpeedDeltaMph <= 8 && windDirectionDeltaDegrees <= 45) {
     return {
       label: "medium",
       observedAt: observation.observedAt,

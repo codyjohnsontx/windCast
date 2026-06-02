@@ -22,6 +22,10 @@ export default function WindcastMap() {
     setWindStatus(status);
   }, []);
   const hourOffset = selectedForecastHour(timeline);
+  const activeWindDensity =
+    preferences.windParticleDensity === "off" ? null : preferences.windParticleDensity;
+  const windLayerActive = layers["wind-particles"] && activeWindDensity !== null;
+  const displayedWindStatus = windLayerActive ? windStatus : "off";
 
   useEffect(() => {
     setDefaultMapLayers(layers);
@@ -31,7 +35,7 @@ export default function WindcastMap() {
     <>
       <MapToolbar
         onOpenLayers={() => setLayerDrawerOpen(true)}
-        windStatus={windStatus}
+        windStatus={displayedWindStatus}
         density={preferences.windParticleDensity}
       />
       <LayerDrawer
@@ -55,8 +59,8 @@ export default function WindcastMap() {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        {layers["wind-particles"] && preferences.windParticleDensity !== "off" && (
-          <VelocityLayer density={preferences.windParticleDensity} onStatusChange={handleWindStatus} />
+        {windLayerActive && (
+          <VelocityLayer density={activeWindDensity} onStatusChange={handleWindStatus} />
         )}
         {layers.spots && <SpotMarkerLayer hourOffset={hourOffset} />}
         {layers.observations && <ObservationMarkerLayer />}
@@ -73,7 +77,7 @@ function MapToolbar({
   density,
 }: {
   onOpenLayers: () => void;
-  windStatus: "loading" | "active" | "error";
+  windStatus: "loading" | "active" | "error" | "off";
   density: string;
 }) {
   return (

@@ -12,6 +12,7 @@ export type {
 } from "./types";
 export { calculateForecastConfidence, isObservationFresh } from "./confidence";
 export { distanceMiles, stationsWithinRadius } from "./distance";
+export { preferTrustedStation } from "./stations";
 
 let cached: ObservationProvider | null = null;
 

@@ -8,9 +8,12 @@ type Props = {
   onChange: (value: ForecastTimelineSelection) => void;
 };
 
-export function selectedForecastHour(value: ForecastTimelineSelection): number {
+export function selectedForecastHour(value: ForecastTimelineSelection, now = new Date()): number {
   if (value.dayOffset === 0 && value.hourOffset === 0) return 0;
-  return value.dayOffset * 24 + value.hourOffset;
+  const target = new Date(now);
+  target.setDate(now.getDate() + value.dayOffset);
+  target.setHours(value.hourOffset, 0, 0, 0);
+  return Math.max(0, Math.round((target.getTime() - now.getTime()) / 3600000));
 }
 
 export default function ForecastTimeline({ value, onChange }: Props) {

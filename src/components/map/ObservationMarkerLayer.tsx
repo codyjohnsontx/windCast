@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { CircleMarker, Popup } from "react-leaflet";
 import { useSpots } from "../../hooks/useSpots";
-import { getObservationProvider } from "../../services/observations";
+import { getObservationProvider, preferTrustedStation } from "../../services/observations";
 import type { ObservationStation, StationObservation } from "../../services/observations";
 
 type StationState = {
@@ -26,14 +26,21 @@ export default function ObservationMarkerLayer() {
           observation: await provider.getLatestObservation(station),
         };
       })
-    ).then((results) => {
-      if (cancelled) return;
-      const byId = new Map<string, StationState>();
-      for (const result of results) {
-        if (result) byId.set(result.station.id, result);
-      }
-      setStates(Array.from(byId.values()));
-    });
+    )
+      .then((results) => {
+        if (cancelled) return;
+        const byId = new Map<string, StationState>();
+        for (const result of results) {
+          if (result) byId.set(result.station.id, result);
+        }
+        setStates(Array.from(byId.values()));
+      })
+      .catch((error) => {
+        console.error("Failed to load observation map markers.", error);
+        if (!cancelled) {
+          setStates([]);
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -72,15 +79,4 @@ export default function ObservationMarkerLayer() {
       ))}
     </>
   );
-}
-
-function preferTrustedStation(
-  stations: ObservationStation[],
-  trustedStationIds: string[] | undefined
-): ObservationStation | undefined {
-  if (trustedStationIds?.length) {
-    const trusted = stations.find((station) => trustedStationIds.includes(station.id));
-    if (trusted) return trusted;
-  }
-  return stations[0];
 }

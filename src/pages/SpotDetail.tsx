@@ -11,6 +11,7 @@ import { useSpots } from "../hooks/useSpots";
 import {
   calculateForecastConfidence,
   getObservationProvider,
+  preferTrustedStation,
   type ForecastConfidence,
   type ObservationStation,
   type StationObservation,
@@ -46,6 +47,8 @@ export default function SpotDetail() {
   useEffect(() => {
     if (!spot) return;
     let cancelled = false;
+    setStation(undefined);
+    setObservation(null);
     const provider = getObservationProvider();
     provider
       .getStationsNear(spot.latitude, spot.longitude, 75)
@@ -197,17 +200,6 @@ export default function SpotDetail() {
       ))}
     </div>
   );
-}
-
-function preferTrustedStation(
-  stations: ObservationStation[],
-  trustedStationIds: string[] | undefined
-): ObservationStation | undefined {
-  if (trustedStationIds?.length) {
-    const trusted = stations.find((station) => trustedStationIds.includes(station.id));
-    if (trusted) return trusted;
-  }
-  return stations[0];
 }
 
 function decisionPhrase(score: ReturnType<typeof scoreHour>, confidence: ForecastConfidence): string {
