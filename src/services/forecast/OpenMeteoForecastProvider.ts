@@ -1,6 +1,7 @@
 import type { ForecastHour, Spot } from "../../types";
 import { ForecastError, type ForecastProvider, type ForecastRequestOptions } from "./types";
 import { celsiusToFahrenheit, degreesToCompass, mpsToMph } from "./normalize";
+import { parseTimeoutMs } from "../../utils/env";
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
 
@@ -128,8 +129,7 @@ function validateHours(hours: number): void {
 }
 
 function requestTimeoutMs(): number {
-  const raw = Number(import.meta.env.VITE_OPEN_METEO_TIMEOUT_MS ?? DEFAULT_REQUEST_TIMEOUT_MS);
-  return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_REQUEST_TIMEOUT_MS;
+  return parseTimeoutMs(import.meta.env.VITE_OPEN_METEO_TIMEOUT_MS, DEFAULT_REQUEST_TIMEOUT_MS);
 }
 
 function validateUtcOffsetSeconds(value: unknown): number {

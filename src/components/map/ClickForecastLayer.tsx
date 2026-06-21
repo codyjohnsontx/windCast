@@ -41,20 +41,21 @@ export default function ClickForecastLayer() {
 
   useEffect(() => {
     if (!latlng) return;
-    let cancelled = false;
-    getHourlyForecastResult(ephemeralSpotAt(latlng.lat, latlng.lng), 1)
+    const controller = new AbortController();
+    getHourlyForecastResult(ephemeralSpotAt(latlng.lat, latlng.lng), 1, {
+      signal: controller.signal,
+    })
       .then((result) => {
-        if (!cancelled) {
-          setHour(result.hours[0] ?? null);
-          setMeta(result.meta);
-          setLoading(false);
-        }
+        setHour(result.hours[0] ?? null);
+        setMeta(result.meta);
+        setLoading(false);
       })
-      .catch(() => {
-        if (!cancelled) setLoading(false);
+      .catch((error) => {
+        if (isAbortError(error)) return;
+        setLoading(false);
       });
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [latlng]);
 
@@ -103,4 +104,8 @@ export default function ClickForecastLayer() {
       </div>
     </Popup>
   );
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
 }

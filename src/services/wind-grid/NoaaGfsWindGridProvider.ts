@@ -1,4 +1,5 @@
 import { WindGridError, type WindGridDataset, type WindGridProvider } from "./types";
+import { parseTimeoutMs } from "../../utils/env";
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 8_000;
 
@@ -60,8 +61,7 @@ export class NoaaGfsWindGridProvider implements WindGridProvider {
 }
 
 function requestTimeoutMs(): number {
-  const raw = Number(import.meta.env.VITE_WIND_GRID_TIMEOUT_MS ?? DEFAULT_REQUEST_TIMEOUT_MS);
-  return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_REQUEST_TIMEOUT_MS;
+  return parseTimeoutMs(import.meta.env.VITE_WIND_GRID_TIMEOUT_MS, DEFAULT_REQUEST_TIMEOUT_MS);
 }
 
 function isWindGridDataset(value: unknown): value is WindGridDataset {

@@ -69,6 +69,7 @@ export class CachedForecastProvider implements ForecastProvider {
         },
       };
     } catch (error) {
+      if (isAbortError(error)) throw error;
       throwIfAborted(options?.signal);
       if (cached) {
         return {
@@ -168,4 +169,8 @@ function throwIfAborted(signal: AbortSignal | undefined): void {
   if (!signal?.aborted) return;
   if (signal.reason instanceof Error) throw signal.reason;
   throw new DOMException("The operation was aborted.", "AbortError");
+}
+
+function isAbortError(error: unknown): boolean {
+  return Boolean(error && typeof error === "object" && "name" in error && error.name === "AbortError");
 }

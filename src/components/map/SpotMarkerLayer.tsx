@@ -61,12 +61,14 @@ export default function SpotMarkerLayer({ hourOffset, onSelectSpot }: Props) {
   const [states, setStates] = useState<SpotMarkerState[]>(spots.map((spot) => ({ spot, loading: true })));
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
     setStates(spots.map((spot) => ({ spot, loading: true })));
     Promise.all(
       spots.map(async (spot) => {
         try {
-          const result = await getHourlyForecastResult(spot, hourOffset + 1);
+          const result = await getHourlyForecastResult(spot, hourOffset + 1, {
+            signal: controller.signal,
+          });
           const hours = result.hours;
           const current = hours[hourOffset] ?? hours[0];
           return {
@@ -76,15 +78,18 @@ export default function SpotMarkerLayer({ hourOffset, onSelectSpot }: Props) {
             forecastMeta: result.meta,
             loading: false,
           } satisfies SpotMarkerState;
-        } catch {
+        } catch (error) {
+          if (isAbortError(error)) {
+            return { spot, loading: true } satisfies SpotMarkerState;
+          }
           return { spot, loading: false, error: true } satisfies SpotMarkerState;
         }
       })
     ).then((result) => {
-      if (!cancelled) setStates(result);
+      if (!controller.signal.aborted) setStates(result);
     });
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [spots, hourOffset]);
 
@@ -153,4 +158,8 @@ export default function SpotMarkerLayer({ hourOffset, onSelectSpot }: Props) {
       })}
     </>
   );
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
 }

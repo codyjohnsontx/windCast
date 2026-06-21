@@ -52,7 +52,7 @@ export async function getHourlyForecastResult(
   } catch (error) {
     if (options?.signal?.aborted) throw error;
     if (provider.id === "mock") throw error;
-    const fallback = await new MockForecastProvider().getHourlyForecast(spot, hours);
+    const fallback = await new MockForecastProvider().getHourlyForecast(spot, hours, options);
     return {
       hours: fallback,
       meta: {
