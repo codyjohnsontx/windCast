@@ -2,7 +2,7 @@ import type { ForecastHour, Spot } from "../../types";
 import { ForecastError, type ForecastProvider } from "./types";
 import { celsiusToFahrenheit, degreesToCompass, mpsToMph } from "./normalize";
 
-const REQUEST_TIMEOUT_MS = 10_000;
+const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
 
 /**
  * Open-Meteo provider stub.
@@ -44,10 +44,11 @@ export class OpenMeteoForecastProvider implements ForecastProvider {
     });
 
     const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const timeoutId = window.setTimeout(() => controller.abort(), requestTimeoutMs());
 
     try {
-      const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`, {
+      const baseUrl = (import.meta.env.VITE_OPEN_METEO_BASE_URL ?? "https://api.open-meteo.com/v1").replace(/\/$/, "");
+      const response = await fetch(`${baseUrl}/forecast?${params}`, {
         signal: controller.signal,
       });
       if (!response.ok) {
@@ -116,6 +117,11 @@ function validateHours(hours: number): void {
   if (!Number.isInteger(hours) || !Number.isFinite(hours) || hours <= 0) {
     throw new RangeError("Forecast hours must be a finite integer greater than 0.");
   }
+}
+
+function requestTimeoutMs(): number {
+  const raw = Number(import.meta.env.VITE_OPEN_METEO_TIMEOUT_MS ?? DEFAULT_REQUEST_TIMEOUT_MS);
+  return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_REQUEST_TIMEOUT_MS;
 }
 
 function validateUtcOffsetSeconds(value: unknown): number {

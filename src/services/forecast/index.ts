@@ -1,11 +1,12 @@
 import { MockForecastProvider } from "./MockForecastProvider";
 import { OpenMeteoForecastProvider } from "./OpenMeteoForecastProvider";
 import { CachedForecastProvider } from "./cache";
-import type { ForecastProvider } from "./types";
+import type { ForecastProvider, ForecastResult } from "./types";
+import type { Spot } from "../../types";
 
 export { ForecastError } from "./types";
 export { clearForecastCache } from "./cache";
-export type { ForecastProvider } from "./types";
+export type { ForecastProvider, ForecastResult, ForecastSourceMeta, ProviderStatus } from "./types";
 
 let cached: ForecastProvider | null = null;
 
@@ -25,6 +26,40 @@ export function getForecastProvider(): ForecastProvider {
       break;
   }
   return cached;
+}
+
+export async function getHourlyForecastResult(spot: Spot, hours = 48): Promise<ForecastResult> {
+  const provider = getForecastProvider();
+  try {
+    if (provider.getHourlyForecastResult) {
+      return await provider.getHourlyForecastResult(spot, hours);
+    }
+    const data = await provider.getHourlyForecast(spot, hours);
+    return {
+      hours: data,
+      meta: {
+        source: provider.id,
+        providerId: provider.id,
+        status: "ready",
+        fetchedAt: new Date().toISOString(),
+        isFallback: false,
+      },
+    };
+  } catch (error) {
+    if (provider.id === "mock") throw error;
+    const fallback = await new MockForecastProvider().getHourlyForecast(spot, hours);
+    return {
+      hours: fallback,
+      meta: {
+        source: "demo fallback",
+        providerId: provider.id,
+        status: "degraded",
+        fetchedAt: new Date().toISOString(),
+        isFallback: true,
+        message: "Live forecast unavailable; showing demo forecast data",
+      },
+    };
+  }
 }
 
 export function forecastCacheTtlMinutes(): number {

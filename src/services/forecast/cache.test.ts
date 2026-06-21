@@ -1,0 +1,61 @@
+import { describe, expect, it, vi } from "vitest";
+import type { ForecastHour, Spot } from "../../types";
+import { CachedForecastProvider } from "./cache";
+import type { ForecastProvider } from "./types";
+
+const spot: Spot = {
+  id: "test-spot",
+  name: "Test Spot",
+  latitude: 27,
+  longitude: -97,
+  sportTypes: [],
+  idealWindDirections: [],
+  unsafeWindDirections: [],
+  minWindMph: 0,
+  idealWindMph: [0, 100],
+  maxWindMph: 100,
+};
+
+const hour: ForecastHour = {
+  time: "2026-06-01T12:00:00.000Z",
+  windSpeedMph: 18,
+  windGustMph: 24,
+  windDirection: "SE",
+};
+
+describe("CachedForecastProvider", () => {
+  it("returns stale cache as degraded fallback when live provider fails", async () => {
+    const storage = memoryStorage();
+    const staleEntry = {
+      expiresAt: Date.now() - 1000,
+      fetchedAt: Date.now() - 60_000,
+      data: [hour],
+    };
+    storage.setItem("windcast.forecast.live.test-spot.27.0000.-97.0000.1", JSON.stringify(staleEntry));
+    const inner: ForecastProvider = {
+      id: "live",
+      getHourlyForecast: vi.fn().mockRejectedValue(new Error("offline")),
+    };
+
+    const result = await new CachedForecastProvider(inner, 30_000, storage).getHourlyForecastResult(spot, 1);
+
+    expect(result.hours).toEqual([hour]);
+    expect(result.meta.status).toBe("degraded");
+    expect(result.meta.source).toBe("stale cache");
+    expect(result.meta.isFallback).toBe(true);
+  });
+});
+
+function memoryStorage(): Storage {
+  const map = new Map<string, string>();
+  return {
+    get length() {
+      return map.size;
+    },
+    clear: () => map.clear(),
+    getItem: (key) => map.get(key) ?? null,
+    key: (index) => Array.from(map.keys())[index] ?? null,
+    removeItem: (key) => map.delete(key),
+    setItem: (key, value) => map.set(key, value),
+  };
+}

@@ -18,11 +18,17 @@ export function selectedForecastHour(value: ForecastTimelineSelection, now = new
 
 export default function ForecastTimeline({ value, onChange }: Props) {
   return (
-    <div className="absolute bottom-3 left-3 right-16 z-[500] rounded-lg border border-ink-line bg-ink-panel/95 p-2 shadow-lg backdrop-blur">
+    <div
+      className="absolute bottom-3 left-3 right-16 z-[500] rounded-lg border border-ink-line bg-ink-panel/95 p-2 shadow-lg backdrop-blur"
+      role="group"
+      aria-label="Forecast time"
+    >
       <div className="flex items-center gap-2 overflow-x-auto">
         <button
           type="button"
           onClick={() => onChange({ dayOffset: 0, hourOffset: 0 })}
+          aria-pressed={selectedForecastHour(value) === 0}
+          aria-label="Show current forecast"
           className={`h-8 shrink-0 rounded px-3 text-xs font-semibold ${
             selectedForecastHour(value) === 0 ? "bg-ink-text text-ink-base" : "text-ink-muted"
           }`}
@@ -35,6 +41,8 @@ export default function ForecastTimeline({ value, onChange }: Props) {
             key={dayOffset}
             type="button"
             onClick={() => onChange({ dayOffset, hourOffset: value.hourOffset || 12 })}
+            aria-pressed={value.dayOffset === dayOffset && selectedForecastHour(value) !== 0}
+            aria-label={`Show ${dayLabel(dayOffset)} forecast`}
             className={`h-8 shrink-0 rounded px-3 text-xs font-semibold ${
               value.dayOffset === dayOffset && selectedForecastHour(value) !== 0
                 ? "bg-ink-text text-ink-base"
@@ -51,6 +59,8 @@ export default function ForecastTimeline({ value, onChange }: Props) {
             key={hourOffset}
             type="button"
             onClick={() => onChange({ dayOffset: value.dayOffset, hourOffset })}
+            aria-pressed={value.hourOffset === hourOffset && selectedForecastHour(value) !== 0}
+            aria-label={`Show forecast at ${hourLabel(hourOffset)}`}
             className={`h-7 shrink-0 rounded px-2 text-[11px] font-semibold ${
               value.hourOffset === hourOffset && selectedForecastHour(value) !== 0
                 ? "bg-score-good/15 text-score-good ring-1 ring-score-good/40"

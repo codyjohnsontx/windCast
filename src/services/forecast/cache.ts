@@ -1,8 +1,9 @@
 import type { ForecastHour, Spot } from "../../types";
-import type { ForecastProvider } from "./types";
+import type { ForecastProvider, ForecastResult } from "./types";
 
 type CacheEntry = {
   expiresAt: number;
+  fetchedAt: number;
   data: ForecastHour[];
 };
 
@@ -28,14 +29,60 @@ export class CachedForecastProvider implements ForecastProvider {
   }
 
   async getHourlyForecast(spot: Spot, hours = 48): Promise<ForecastHour[]> {
+    return (await this.getHourlyForecastResult(spot, hours)).hours;
+  }
+
+  async getHourlyForecastResult(spot: Spot, hours = 48): Promise<ForecastResult> {
     const key = this.cacheKey(spot, hours);
     const cached = this.readCache(key);
     if (cached && cached.expiresAt > Date.now()) {
-      return cached.data;
+      return {
+        hours: cached.data,
+        meta: {
+          source: "cache",
+          providerId: this.inner.id,
+          status: "ready",
+          fetchedAt: new Date(cached.fetchedAt).toISOString(),
+          expiresAt: new Date(cached.expiresAt).toISOString(),
+          isFallback: false,
+          message: "Using cached forecast",
+        },
+      };
     }
-    const fresh = await this.inner.getHourlyForecast(spot, hours);
-    this.writeCache(key, { expiresAt: Date.now() + this.ttlMs, data: fresh });
-    return fresh;
+
+    try {
+      const fresh = await this.inner.getHourlyForecast(spot, hours);
+      const fetchedAt = Date.now();
+      const expiresAt = fetchedAt + this.ttlMs;
+      this.writeCache(key, { expiresAt, fetchedAt, data: fresh });
+      return {
+        hours: fresh,
+        meta: {
+          source: this.inner.id,
+          providerId: this.inner.id,
+          status: "ready",
+          fetchedAt: new Date(fetchedAt).toISOString(),
+          expiresAt: new Date(expiresAt).toISOString(),
+          isFallback: false,
+        },
+      };
+    } catch (error) {
+      if (cached) {
+        return {
+          hours: cached.data,
+          meta: {
+            source: "stale cache",
+            providerId: this.inner.id,
+            status: "degraded",
+            fetchedAt: new Date(cached.fetchedAt).toISOString(),
+            expiresAt: new Date(cached.expiresAt).toISOString(),
+            isFallback: true,
+            message: "Live forecast failed; showing the last cached forecast",
+          },
+        };
+      }
+      throw error;
+    }
   }
 
   private cacheKey(spot: Spot, hours: number): string {
@@ -45,7 +92,14 @@ export class CachedForecastProvider implements ForecastProvider {
   private readCache(key: string): CacheEntry | null {
     try {
       const raw = this.storage.getItem(key);
-      return raw ? (JSON.parse(raw) as CacheEntry) : null;
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as Partial<CacheEntry>;
+      if (!Array.isArray(parsed.data) || typeof parsed.expiresAt !== "number") return null;
+      return {
+        data: parsed.data,
+        expiresAt: parsed.expiresAt,
+        fetchedAt: typeof parsed.fetchedAt === "number" ? parsed.fetchedAt : parsed.expiresAt - this.ttlMs,
+      };
     } catch {
       return null;
     }

@@ -7,7 +7,7 @@ export default function App() {
 
   return (
     <div className="min-h-full flex flex-col">
-      <main className="flex-1 max-w-2xl w-full mx-auto px-4 pt-6 pb-28">
+      <main className="flex-1 max-w-2xl w-full mx-auto px-4 pt-6 pb-40">
         <ErrorBoundary key={location.pathname}>
           <Outlet />
         </ErrorBoundary>

@@ -68,21 +68,32 @@ function loadPreferences(): Preferences {
   }
 }
 
-function persist(preferences: Preferences): void {
-  if (typeof window === "undefined") return;
+function persist(preferences: Preferences): string | null {
+  if (typeof window === "undefined") return null;
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
+    return null;
   } catch {
-    // Ignore storage failures; controls still work in memory for this session.
+    return "Preferences could not be persisted. Controls still work for this session.";
   }
 }
 
 export function usePreferences() {
   const [preferences, setPreferences] = useState<Preferences>(() => loadPreferences());
+  const [storageIssue, setStorageIssue] = useState<string | null>(null);
 
   useEffect(() => {
-    persist(preferences);
+    setStorageIssue(persist(preferences));
   }, [preferences]);
+
+  useEffect(() => {
+    function sync(event: StorageEvent) {
+      if (event.key !== STORAGE_KEY) return;
+      setPreferences(loadPreferences());
+    }
+    window.addEventListener("storage", sync);
+    return () => window.removeEventListener("storage", sync);
+  }, []);
 
   const setWindUnit = useCallback((windUnit: UnitSystem) => {
     setPreferences((prev) => ({ ...prev, windUnit }));
@@ -96,5 +107,5 @@ export function usePreferences() {
     setPreferences((prev) => ({ ...prev, windParticleDensity }));
   }, []);
 
-  return { preferences, setDefaultMapLayers, setWindParticleDensity, setWindUnit };
+  return { preferences, storageIssue, setDefaultMapLayers, setWindParticleDensity, setWindUnit };
 }

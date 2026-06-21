@@ -29,9 +29,39 @@ export class NoaaGfsWindGridProvider implements WindGridProvider {
   readonly id = "noaa-gfs";
 
   async getWindGrid(): Promise<WindGridDataset> {
-    throw new WindGridError(
-      "NoaaGfsWindGridProvider is not implemented yet. See file for integration notes.",
-      this.id
-    );
+    const proxyUrl = import.meta.env.VITE_WIND_GRID_PROXY_URL;
+    if (!proxyUrl) {
+      throw new WindGridError(
+        "NOAA GFS wind grid needs VITE_WIND_GRID_PROXY_URL. See file for integration notes.",
+        this.id
+      );
+    }
+
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 8_000);
+    try {
+      const response = await fetch(proxyUrl, { signal: controller.signal });
+      if (!response.ok) {
+        throw new Error(`NOAA GFS proxy returned ${response.status}`);
+      }
+      const payload = await response.json();
+      if (!isWindGridDataset(payload)) {
+        throw new Error("NOAA GFS proxy returned an invalid wind grid payload");
+      }
+      return payload;
+    } catch (error) {
+      throw new WindGridError("Could not load NOAA GFS wind grid.", this.id, error);
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
   }
+}
+
+function isWindGridDataset(value: unknown): value is WindGridDataset {
+  if (!Array.isArray(value) || value.length !== 2) return false;
+  return value.every((grid) => {
+    if (!grid || typeof grid !== "object") return false;
+    const candidate = grid as Partial<WindGridDataset[number]>;
+    return Boolean(candidate.header) && Array.isArray(candidate.data);
+  });
 }

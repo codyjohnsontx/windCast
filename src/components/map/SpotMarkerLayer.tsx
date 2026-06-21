@@ -6,7 +6,7 @@ import type { ForecastHour, SessionScore, Spot } from "../../types";
 import type { SessionScoreLabel } from "../../types";
 import { useSpots } from "../../hooks/useSpots";
 import { usePreferences } from "../../hooks/usePreferences";
-import { getForecastProvider } from "../../services/forecast";
+import { getHourlyForecastResult, type ForecastSourceMeta } from "../../services/forecast";
 import { scoreHour } from "../../utils/sessionScore";
 import { formatWind } from "../../utils/format";
 
@@ -41,36 +41,43 @@ function pinIcon(color: string): L.DivIcon {
   });
 }
 
-type SpotState = {
+export type SpotMarkerState = {
   spot: Spot;
   current?: ForecastHour;
   score?: SessionScore;
+  forecastMeta?: ForecastSourceMeta;
+  loading?: boolean;
+  error?: boolean;
 };
 
 type Props = {
   hourOffset: number;
+  onSelectSpot?: (state: SpotMarkerState) => void;
 };
 
-export default function SpotMarkerLayer({ hourOffset }: Props) {
+export default function SpotMarkerLayer({ hourOffset, onSelectSpot }: Props) {
   const { spots } = useSpots();
   const { preferences } = usePreferences();
-  const [states, setStates] = useState<SpotState[]>(spots.map((spot) => ({ spot })));
+  const [states, setStates] = useState<SpotMarkerState[]>(spots.map((spot) => ({ spot, loading: true })));
 
   useEffect(() => {
     let cancelled = false;
-    const provider = getForecastProvider();
+    setStates(spots.map((spot) => ({ spot, loading: true })));
     Promise.all(
       spots.map(async (spot) => {
         try {
-          const hours = await provider.getHourlyForecast(spot, hourOffset + 1);
+          const result = await getHourlyForecastResult(spot, hourOffset + 1);
+          const hours = result.hours;
           const current = hours[hourOffset] ?? hours[0];
           return {
             spot,
             current,
             score: current ? scoreHour(current, spot) : undefined,
-          } satisfies SpotState;
+            forecastMeta: result.meta,
+            loading: false,
+          } satisfies SpotMarkerState;
         } catch {
-          return { spot } satisfies SpotState;
+          return { spot, loading: false, error: true } satisfies SpotMarkerState;
         }
       })
     ).then((result) => {
@@ -83,13 +90,22 @@ export default function SpotMarkerLayer({ hourOffset }: Props) {
 
   return (
     <>
-      {states.map(({ spot, current, score }) => {
+      {states.map((state) => {
+        const { spot, current, score, forecastMeta, loading, error } = state;
         const color = score ? COLORS[score.label] : COLORS.poor;
         return (
-          <Marker key={spot.id} position={[spot.latitude, spot.longitude]} icon={pinIcon(color)}>
+          <Marker
+            key={`${spot.id}:${loading ? "loading" : score?.label ?? (error ? "error" : "ready")}`}
+            position={[spot.latitude, spot.longitude]}
+            icon={pinIcon(color)}
+            title={`${spot.name}${score ? ` ${score.label}` : loading ? " loading" : error ? " unavailable" : ""}`}
+            eventHandlers={{ click: () => onSelectSpot?.(state) }}
+          >
             <Popup>
               <div className="text-sm" style={{ minWidth: 180 }}>
                 <div style={{ fontWeight: 600, fontSize: 14 }}>{spot.name}</div>
+                {loading && <div style={{ marginTop: 4, color: "#64748b" }}>Checking forecast…</div>}
+                {error && <div style={{ marginTop: 4, color: "#ef4444" }}>Forecast unavailable.</div>}
                 {score && (
                   <div style={{ marginTop: 4, textTransform: "uppercase", fontSize: 11, color }}>
                     {score.label}
@@ -101,6 +117,11 @@ export default function SpotMarkerLayer({ hourOffset }: Props) {
                     <span style={{ opacity: 0.7 }}>
                       g {formatWind(current.windGustMph, preferences.windUnit)} · {current.windDirection}
                     </span>
+                  </div>
+                )}
+                {forecastMeta?.status !== "ready" && (
+                  <div style={{ marginTop: 6, color: "#92400e", fontSize: 11 }}>
+                    {forecastMeta?.message ?? forecastMeta?.source}
                   </div>
                 )}
                 <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
