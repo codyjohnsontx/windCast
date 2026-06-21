@@ -35,6 +35,7 @@ export class CachedForecastProvider implements ForecastProvider {
   async getHourlyForecastResult(spot: Spot, hours = 48, options?: ForecastRequestOptions): Promise<ForecastResult> {
     const key = this.cacheKey(spot, hours);
     const cached = this.readCache(key);
+    throwIfAborted(options?.signal);
     if (cached && cached.expiresAt > Date.now()) {
       return {
         hours: cached.data,
@@ -52,6 +53,7 @@ export class CachedForecastProvider implements ForecastProvider {
 
     try {
       const fresh = await this.inner.getHourlyForecast(spot, hours, options);
+      throwIfAborted(options?.signal);
       const fetchedAt = Date.now();
       const expiresAt = fetchedAt + this.ttlMs;
       this.writeCache(key, { expiresAt, fetchedAt, data: fresh });
@@ -67,6 +69,7 @@ export class CachedForecastProvider implements ForecastProvider {
         },
       };
     } catch (error) {
+      throwIfAborted(options?.signal);
       if (cached) {
         return {
           hours: cached.data,
@@ -159,4 +162,10 @@ function memoryStorage(): Storage {
       map.set(key, value);
     },
   };
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (!signal?.aborted) return;
+  if (signal.reason instanceof Error) throw signal.reason;
+  throw new DOMException("The operation was aborted.", "AbortError");
 }

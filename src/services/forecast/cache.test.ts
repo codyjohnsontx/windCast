@@ -62,6 +62,29 @@ describe("CachedForecastProvider", () => {
     expect(result.meta.source).toBe("live");
     expect(inner.getHourlyForecast).toHaveBeenCalledOnce();
   });
+
+  it("does not return stale cache when the request is already aborted", async () => {
+    const storage = memoryStorage();
+    const staleEntry = {
+      expiresAt: Date.now() - 1000,
+      fetchedAt: Date.now() - 60_000,
+      data: [hour],
+    };
+    storage.setItem("windcast.forecast.live.test-spot.27.0000.-97.0000.1", JSON.stringify(staleEntry));
+    const controller = new AbortController();
+    controller.abort();
+    const inner: ForecastProvider = {
+      id: "live",
+      getHourlyForecast: vi.fn().mockRejectedValue(new Error("offline")),
+    };
+
+    await expect(
+      new CachedForecastProvider(inner, 30_000, storage).getHourlyForecastResult(spot, 1, {
+        signal: controller.signal,
+      })
+    ).rejects.toThrow();
+    expect(inner.getHourlyForecast).not.toHaveBeenCalled();
+  });
 });
 
 function memoryStorage(): Storage {
