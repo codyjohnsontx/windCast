@@ -60,6 +60,7 @@ export default function SpotDetail() {
           setStations(nextStations);
           setStation(nextStation);
         }
+        if (cancelled) return;
         let nextObservation: StationObservation | null = null;
         try {
           nextObservation = nextStation
