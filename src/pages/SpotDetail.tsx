@@ -55,12 +55,10 @@ export default function SpotDetail() {
     provider
       .getStationsNear(spot.latitude, spot.longitude, 75)
       .then(async (nextStations) => {
-        const nextStation = preferTrustedStation(nextStations, spot.trustedStationIds);
-        if (!cancelled) {
-          setStations(nextStations);
-          setStation(nextStation);
-        }
         if (cancelled) return;
+        const nextStation = preferTrustedStation(nextStations, spot.trustedStationIds);
+        setStations(nextStations);
+        setStation(nextStation);
         let nextObservation: StationObservation | null = null;
         try {
           nextObservation = nextStation
