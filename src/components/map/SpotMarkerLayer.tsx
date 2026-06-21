@@ -119,9 +119,9 @@ export default function SpotMarkerLayer({ hourOffset, onSelectSpot }: Props) {
                     </span>
                   </div>
                 )}
-                {forecastMeta?.status !== "ready" && (
+                {forecastMeta && forecastMeta.status !== "ready" && (
                   <div style={{ marginTop: 6, color: "#92400e", fontSize: 11 }}>
-                    {forecastMeta?.message ?? forecastMeta?.source}
+                    {forecastMeta.message ?? forecastMeta.source}
                   </div>
                 )}
                 <div style={{ display: "flex", gap: 10, marginTop: 8 }}>

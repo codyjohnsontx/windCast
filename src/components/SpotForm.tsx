@@ -83,7 +83,7 @@ export default function SpotForm({ initialSpot, initialLat, initialLng, onSubmit
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <button type="button" className="button-secondary" onClick={useCurrentLocation}>
+            <button type="button" className="button-secondary" onClick={handleCurrentLocation}>
               <Crosshair size={16} /> Use my location
             </button>
             <Link to="/map" className="button-secondary">
@@ -204,7 +204,7 @@ export default function SpotForm({ initialSpot, initialLat, initialLng, onSubmit
     setState((prev) => ({ ...prev, [key]: value }));
   }
 
-  function useCurrentLocation() {
+  function handleCurrentLocation() {
     if (!navigator.geolocation) {
       setLocationStatus("Location is not available in this browser.");
       return;

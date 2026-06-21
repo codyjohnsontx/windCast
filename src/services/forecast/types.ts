@@ -17,10 +17,14 @@ export type ForecastResult = {
   meta: ForecastSourceMeta;
 };
 
+export type ForecastRequestOptions = {
+  signal?: AbortSignal;
+};
+
 export interface ForecastProvider {
   readonly id: string;
-  getHourlyForecast(spot: Spot, hours?: number): Promise<ForecastHour[]>;
-  getHourlyForecastResult?(spot: Spot, hours?: number): Promise<ForecastResult>;
+  getHourlyForecast(spot: Spot, hours?: number, options?: ForecastRequestOptions): Promise<ForecastHour[]>;
+  getHourlyForecastResult?(spot: Spot, hours?: number, options?: ForecastRequestOptions): Promise<ForecastResult>;
 }
 
 export class ForecastError extends Error {

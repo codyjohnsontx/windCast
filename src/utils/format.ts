@@ -31,6 +31,13 @@ export function formatPercent(value: number): string {
   return `${Math.round(value * 100)}%`;
 }
 
+export function formatAge(iso: string): string {
+  const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  return `${Math.round(minutes / 60)} hr ago`;
+}
+
 function formatWindValue(mph: number, unit: UnitSystem): string {
   if (unit === "knots") return String(Math.round(mph / 1.15078));
   if (unit === "mps") return String(Math.round((mph / 2.23694) * 10) / 10);

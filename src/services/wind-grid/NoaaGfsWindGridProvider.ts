@@ -1,5 +1,7 @@
 import { WindGridError, type WindGridDataset, type WindGridProvider } from "./types";
 
+const DEFAULT_REQUEST_TIMEOUT_MS = 8_000;
+
 /**
  * NOAA GFS wind grid provider stub.
  *
@@ -38,7 +40,7 @@ export class NoaaGfsWindGridProvider implements WindGridProvider {
     }
 
     const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => controller.abort(), 8_000);
+    const timeoutId = window.setTimeout(() => controller.abort(), requestTimeoutMs());
     try {
       const response = await fetch(proxyUrl, { signal: controller.signal });
       if (!response.ok) {
@@ -55,6 +57,11 @@ export class NoaaGfsWindGridProvider implements WindGridProvider {
       window.clearTimeout(timeoutId);
     }
   }
+}
+
+function requestTimeoutMs(): number {
+  const raw = Number(import.meta.env.VITE_WIND_GRID_TIMEOUT_MS ?? DEFAULT_REQUEST_TIMEOUT_MS);
+  return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_REQUEST_TIMEOUT_MS;
 }
 
 function isWindGridDataset(value: unknown): value is WindGridDataset {

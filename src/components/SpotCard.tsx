@@ -12,7 +12,7 @@ import ConfidenceBadge from "./ConfidenceBadge";
 import ScoreBadge from "./ScoreBadge";
 import SportTagList from "./SportTagList";
 import WindDirectionIcon from "./WindDirectionIcon";
-import { formatDayLabel, formatHour, formatWind } from "../utils/format";
+import { formatAge, formatDayLabel, formatHour, formatWind } from "../utils/format";
 
 type Props = {
   spot: Spot;
@@ -147,13 +147,6 @@ export default function SpotCard({
       )}
     </Link>
   );
-}
-
-function formatAge(iso: string): string {
-  const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes} min ago`;
-  return `${Math.round(minutes / 60)} hr ago`;
 }
 
 function decisionPhrase(score: SessionScore | undefined, confidence: ForecastConfidence | undefined): string {

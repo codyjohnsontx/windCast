@@ -1,5 +1,5 @@
 import type { ForecastHour, Spot } from "../../types";
-import type { ForecastProvider, ForecastResult } from "./types";
+import type { ForecastProvider, ForecastRequestOptions, ForecastResult } from "./types";
 
 type CacheEntry = {
   expiresAt: number;
@@ -28,11 +28,11 @@ export class CachedForecastProvider implements ForecastProvider {
     this.id = `${inner.id}+cache`;
   }
 
-  async getHourlyForecast(spot: Spot, hours = 48): Promise<ForecastHour[]> {
-    return (await this.getHourlyForecastResult(spot, hours)).hours;
+  async getHourlyForecast(spot: Spot, hours = 48, options?: ForecastRequestOptions): Promise<ForecastHour[]> {
+    return (await this.getHourlyForecastResult(spot, hours, options)).hours;
   }
 
-  async getHourlyForecastResult(spot: Spot, hours = 48): Promise<ForecastResult> {
+  async getHourlyForecastResult(spot: Spot, hours = 48, options?: ForecastRequestOptions): Promise<ForecastResult> {
     const key = this.cacheKey(spot, hours);
     const cached = this.readCache(key);
     if (cached && cached.expiresAt > Date.now()) {
@@ -51,7 +51,7 @@ export class CachedForecastProvider implements ForecastProvider {
     }
 
     try {
-      const fresh = await this.inner.getHourlyForecast(spot, hours);
+      const fresh = await this.inner.getHourlyForecast(spot, hours, options);
       const fetchedAt = Date.now();
       const expiresAt = fetchedAt + this.ttlMs;
       this.writeCache(key, { expiresAt, fetchedAt, data: fresh });
@@ -94,11 +94,19 @@ export class CachedForecastProvider implements ForecastProvider {
       const raw = this.storage.getItem(key);
       if (!raw) return null;
       const parsed = JSON.parse(raw) as Partial<CacheEntry>;
-      if (!Array.isArray(parsed.data) || typeof parsed.expiresAt !== "number") return null;
+      const expiresAt = parsed.expiresAt;
+      if (!Array.isArray(parsed.data) || typeof expiresAt !== "number" || !Number.isFinite(expiresAt)) {
+        return null;
+      }
+      const parsedFetchedAt = parsed.fetchedAt;
+      const fetchedAt = typeof parsedFetchedAt === "number" && Number.isFinite(parsedFetchedAt)
+        ? parsedFetchedAt
+        : expiresAt - this.ttlMs;
+      if (!Number.isFinite(fetchedAt)) return null;
       return {
         data: parsed.data,
-        expiresAt: parsed.expiresAt,
-        fetchedAt: typeof parsed.fetchedAt === "number" ? parsed.fetchedAt : parsed.expiresAt - this.ttlMs,
+        expiresAt,
+        fetchedAt,
       };
     } catch {
       return null;

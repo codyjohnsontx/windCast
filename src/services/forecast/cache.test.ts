@@ -44,6 +44,24 @@ describe("CachedForecastProvider", () => {
     expect(result.meta.source).toBe("stale cache");
     expect(result.meta.isFallback).toBe(true);
   });
+
+  it("ignores cache entries with non-finite timestamps", async () => {
+    const storage = memoryStorage();
+    storage.setItem(
+      "windcast.forecast.live.test-spot.27.0000.-97.0000.1",
+      `{"expiresAt":1e999,"fetchedAt":1e999,"data":[${JSON.stringify(hour)}]}`
+    );
+    const inner: ForecastProvider = {
+      id: "live",
+      getHourlyForecast: vi.fn().mockResolvedValue([hour]),
+    };
+
+    const result = await new CachedForecastProvider(inner, 30_000, storage).getHourlyForecastResult(spot, 1);
+
+    expect(result.hours).toEqual([hour]);
+    expect(result.meta.source).toBe("live");
+    expect(inner.getHourlyForecast).toHaveBeenCalledOnce();
+  });
 });
 
 function memoryStorage(): Storage {

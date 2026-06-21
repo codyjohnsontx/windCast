@@ -17,7 +17,7 @@ import {
   type StationObservation,
 } from "../services/observations";
 import { bestUpcomingHour, scoreHour } from "../utils/sessionScore";
-import { formatDayLabel, formatRange, formatWind } from "../utils/format";
+import { formatAge, formatDayLabel, formatRange, formatWind } from "../utils/format";
 
 export default function SpotDetail() {
   const { id } = useParams();
@@ -267,11 +267,4 @@ function Meta({ label, children }: { label: string; children: React.ReactNode })
       <div className="mt-0.5">{children}</div>
     </div>
   );
-}
-
-function formatAge(iso: string): string {
-  const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes} min ago`;
-  return `${Math.round(minutes / 60)} hr ago`;
 }

@@ -80,7 +80,7 @@ export default function ClickForecastLayer() {
             )}
             {meta?.isFallback && (
               <div style={{ fontSize: 11, color: "#92400e", marginTop: 4 }}>
-                {meta.source} fallback
+                {meta.source}
               </div>
             )}
           </div>

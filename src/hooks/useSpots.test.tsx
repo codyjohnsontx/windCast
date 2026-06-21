@@ -42,6 +42,15 @@ describe("useSpots", () => {
     expect(result.current.spots).toEqual([expect.objectContaining(spot)]);
   });
 
+  it("preserves an intentionally empty saved spot list", () => {
+    window.localStorage.setItem("windcast.spots", "[]");
+
+    const { result } = renderHook(() => useSpots());
+
+    expect(result.current.spots).toEqual([]);
+    expect(result.current.storageIssue).toBeNull();
+  });
+
   it("does not overwrite unparseable saved spot data on mount", () => {
     window.localStorage.setItem("windcast.spots", "{bad json");
 

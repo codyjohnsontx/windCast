@@ -53,6 +53,9 @@ function loadSpots(): LoadSpotsResult {
         return [];
       }
     });
+    if (parsed.length === 0) {
+      return { spots: [], issue: null };
+    }
     if (validSpots.length) {
       return {
         spots: validSpots,

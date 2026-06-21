@@ -1,7 +1,7 @@
 import { MockForecastProvider } from "./MockForecastProvider";
 import { OpenMeteoForecastProvider } from "./OpenMeteoForecastProvider";
 import { CachedForecastProvider } from "./cache";
-import type { ForecastProvider, ForecastResult } from "./types";
+import type { ForecastProvider, ForecastRequestOptions, ForecastResult } from "./types";
 import type { Spot } from "../../types";
 
 export { ForecastError } from "./types";
@@ -28,13 +28,17 @@ export function getForecastProvider(): ForecastProvider {
   return cached;
 }
 
-export async function getHourlyForecastResult(spot: Spot, hours = 48): Promise<ForecastResult> {
+export async function getHourlyForecastResult(
+  spot: Spot,
+  hours = 48,
+  options?: ForecastRequestOptions
+): Promise<ForecastResult> {
   const provider = getForecastProvider();
   try {
     if (provider.getHourlyForecastResult) {
-      return await provider.getHourlyForecastResult(spot, hours);
+      return await provider.getHourlyForecastResult(spot, hours, options);
     }
-    const data = await provider.getHourlyForecast(spot, hours);
+    const data = await provider.getHourlyForecast(spot, hours, options);
     return {
       hours: data,
       meta: {
@@ -46,6 +50,7 @@ export async function getHourlyForecastResult(spot: Spot, hours = 48): Promise<F
       },
     };
   } catch (error) {
+    if (options?.signal?.aborted) throw error;
     if (provider.id === "mock") throw error;
     const fallback = await new MockForecastProvider().getHourlyForecast(spot, hours);
     return {

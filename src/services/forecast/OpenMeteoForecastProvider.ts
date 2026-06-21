@@ -1,5 +1,5 @@
 import type { ForecastHour, Spot } from "../../types";
-import { ForecastError, type ForecastProvider } from "./types";
+import { ForecastError, type ForecastProvider, type ForecastRequestOptions } from "./types";
 import { celsiusToFahrenheit, degreesToCompass, mpsToMph } from "./normalize";
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
@@ -30,7 +30,11 @@ const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
 export class OpenMeteoForecastProvider implements ForecastProvider {
   readonly id = "open-meteo";
 
-  async getHourlyForecast(spot: Spot, hours = 48): Promise<ForecastHour[]> {
+  async getHourlyForecast(
+    spot: Spot,
+    hours = 48,
+    options?: ForecastRequestOptions
+  ): Promise<ForecastHour[]> {
     validateHours(hours);
 
     const params = new URLSearchParams({
@@ -44,6 +48,9 @@ export class OpenMeteoForecastProvider implements ForecastProvider {
     });
 
     const controller = new AbortController();
+    const abortFromSignal = () => controller.abort();
+    if (options?.signal?.aborted) controller.abort();
+    options?.signal?.addEventListener("abort", abortFromSignal, { once: true });
     const timeoutId = window.setTimeout(() => controller.abort(), requestTimeoutMs());
 
     try {
@@ -93,6 +100,7 @@ export class OpenMeteoForecastProvider implements ForecastProvider {
       throw new ForecastError("Could not load Open-Meteo forecast.", this.id, err);
     } finally {
       window.clearTimeout(timeoutId);
+      options?.signal?.removeEventListener("abort", abortFromSignal);
     }
   }
 }

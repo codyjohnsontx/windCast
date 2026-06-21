@@ -48,6 +48,10 @@ export default function WindcastMap() {
     return () => setDefaultMapLayers(layersRef.current);
   }, [setDefaultMapLayers]);
 
+  useEffect(() => {
+    setSelectedSpot(null);
+  }, [hourOffset]);
+
   return (
     <>
       <MapToolbar
