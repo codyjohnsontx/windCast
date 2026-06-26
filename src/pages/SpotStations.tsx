@@ -5,6 +5,7 @@ import { usePreferences } from "../hooks/usePreferences";
 import { useSpots } from "../hooks/useSpots";
 import {
   getObservationProvider,
+  formatTideWater,
   type ObservationStation,
   type StationObservation,
   resolveStationAlias,
@@ -194,11 +195,7 @@ function StationReading({
     );
   }
   if (observation.waterLevelFt !== undefined) {
-    lines.push(
-      `${formatTideState(observation.tideState)}${observation.tideState ? " · " : ""}${observation.waterLevelFt} ft ${
-        observation.waterLevelDatum ?? "MLLW"
-      }`
-    );
+    lines.push(formatTideWater(observation));
   }
   if (observation.waveHeightFt !== undefined) {
     lines.push(
@@ -208,9 +205,4 @@ function StationReading({
     );
   }
   return lines.length ? <>{lines.join(" · ")}</> : <span className="text-ink-muted">No wind or water data.</span>;
-}
-
-function formatTideState(state: StationObservation["tideState"]): string {
-  if (!state || state === "unknown") return "Water";
-  return state[0].toUpperCase() + state.slice(1);
 }

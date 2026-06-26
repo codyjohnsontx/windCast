@@ -2,6 +2,8 @@ export type ObservationStationType = "buoy" | "wind_station" | "tide_station";
 
 export type ObservationProviderId = "ndbc" | "coops" | "manual";
 
+type ExtensibleStringUnion<T extends string> = T | (string & {});
+
 export type ObservationStation = {
   id: string;
   name: string;
@@ -30,7 +32,7 @@ export type StationObservation = {
   waveHeightFt?: number;
   wavePeriodSeconds?: number;
   waterLevelFt?: number;
-  waterLevelDatum?: "MLLW" | "MSL" | string;
+  waterLevelDatum?: ExtensibleStringUnion<"MLLW" | "MSL">;
   tideState?: "rising" | "falling" | "high" | "low" | "unknown";
   airTemperatureF?: number;
   waterTemperatureF?: number;
@@ -51,7 +53,15 @@ export interface ObservationProvider {
   getStationsNear(
     latitude: number,
     longitude: number,
-    radiusMiles: number
+    radiusMiles: number,
+    options?: ObservationRequestOptions
   ): Promise<ObservationStation[]>;
-  getLatestObservation(station: ObservationStation): Promise<StationObservation | null>;
+  getLatestObservation(
+    station: ObservationStation,
+    options?: ObservationRequestOptions
+  ): Promise<StationObservation | null>;
 }
+
+export type ObservationRequestOptions = {
+  signal?: AbortSignal;
+};

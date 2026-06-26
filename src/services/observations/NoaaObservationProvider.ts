@@ -7,7 +7,12 @@ import {
   coopsRecentWaterLevelUrl,
   rawObservationUrl,
 } from "./providerLinks";
-import type { ObservationProvider, ObservationStation, StationObservation } from "./types";
+import type {
+  ObservationProvider,
+  ObservationRequestOptions,
+  ObservationStation,
+  StationObservation,
+} from "./types";
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -24,33 +29,44 @@ export class NoaaObservationProvider implements ObservationProvider {
   async getStationsNear(
     latitude: number,
     longitude: number,
-    radiusMiles: number
+    radiusMiles: number,
+    options?: ObservationRequestOptions
   ): Promise<ObservationStation[]> {
+    throwIfAborted(options?.signal);
     return stationsWithinRadius(NOAA_STATIONS, latitude, longitude, radiusMiles);
   }
 
-  async getLatestObservation(station: ObservationStation): Promise<StationObservation | null> {
+  async getLatestObservation(
+    station: ObservationStation,
+    options?: ObservationRequestOptions
+  ): Promise<StationObservation | null> {
+    throwIfAborted(options?.signal);
     const cached = this.cache.get(station.id);
     if (cached && cached.expiresAt > Date.now()) return cached.observation;
 
     let observation: StationObservation | null = null;
     try {
       if (station.provider === "ndbc") {
-        const response = await fetch(rawObservationUrl("ndbc", station.id)!);
+        const response = await fetch(rawObservationUrl("ndbc", station.id)!, { signal: options?.signal });
         if (!response.ok) throw new Error(`NDBC returned ${response.status}`);
         observation = parseNdbcLatestObservation(station, await response.text());
       } else if (station.provider === "coops") {
-        const latestResponse = await fetch(coopsLatestWaterLevelUrl(station.id));
+        const latestResponse = await fetch(coopsLatestWaterLevelUrl(station.id), {
+          signal: options?.signal,
+        });
         if (!latestResponse.ok) throw new Error(`CO-OPS returned ${latestResponse.status}`);
         let recentPayload: CoopsWaterLevelResponse | null = null;
         try {
-          const recentResponse = await fetch(coopsRecentWaterLevelUrl(station.id));
+          const recentResponse = await fetch(coopsRecentWaterLevelUrl(station.id), {
+            signal: options?.signal,
+          });
           if (recentResponse.ok) {
             recentPayload = (await recentResponse.json()) as CoopsWaterLevelResponse;
           }
         } catch {
           recentPayload = null;
         }
+        throwIfAborted(options?.signal);
         observation = parseCoopsLatestObservation(
           station,
           (await latestResponse.json()) as CoopsWaterLevelResponse,
@@ -68,7 +84,9 @@ export class NoaaObservationProvider implements ObservationProvider {
       observation = null;
     }
 
-    this.cache.set(station.id, { observation, expiresAt: Date.now() + CACHE_TTL_MS });
+    if (observation) {
+      this.cache.set(station.id, { observation, expiresAt: Date.now() + CACHE_TTL_MS });
+    }
     return observation;
   }
 }
@@ -212,4 +230,10 @@ function inferTideState(data: CoopsWaterLevelResponse["data"]): StationObservati
 
 function round1(value: number): number {
   return Math.round(value * 10) / 10;
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) {
+    throw new DOMException("The operation was aborted.", "AbortError");
+  }
 }

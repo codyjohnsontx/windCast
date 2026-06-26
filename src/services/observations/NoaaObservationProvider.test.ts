@@ -89,9 +89,13 @@ describe("NoaaObservationProvider parsers", () => {
 
 describe("NoaaObservationProvider", () => {
   it("returns null on failed station observation fetch", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 500 }));
+    const fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 });
+    vi.stubGlobal("fetch", fetch);
 
-    await expect(new NoaaObservationProvider().getLatestObservation(ndbcStation)).resolves.toBeNull();
+    const provider = new NoaaObservationProvider();
+    await expect(provider.getLatestObservation(ndbcStation)).resolves.toBeNull();
+    await expect(provider.getLatestObservation(ndbcStation)).resolves.toBeNull();
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 
   it("caches repeated station fetches within the TTL", async () => {
@@ -107,5 +111,40 @@ describe("NoaaObservationProvider", () => {
     await provider.getLatestObservation(ndbcStation);
 
     expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("loads CO-OPS latest and recent water levels and caches the result", async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: [{ t: "2026-06-20 18:48", v: "1.24" }] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: [
+            { t: "2026-06-20 18:00", v: "1.10" },
+            { t: "2026-06-20 18:06", v: "1.16" },
+            { t: "2026-06-20 18:12", v: "1.24" },
+          ],
+        }),
+      });
+    vi.stubGlobal("fetch", fetch);
+
+    const provider = new NoaaObservationProvider();
+    const first = await provider.getLatestObservation(coopsStation);
+    const second = await provider.getLatestObservation(coopsStation);
+
+    expect(first).toMatchObject({
+      stationId: "coops:8775237",
+      source: "coops",
+      waterLevelFt: 1.2,
+      tideState: "high",
+    });
+    expect(second).toBe(first);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch.mock.calls[0][0]).toContain("date=latest");
+    expect(fetch.mock.calls[1][0]).toContain("range=3");
   });
 });

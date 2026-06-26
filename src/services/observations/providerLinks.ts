@@ -19,31 +19,11 @@ export function ndbcStationPageUrl(stationId: string): string {
 }
 
 export function coopsLatestWaterLevelUrl(stationId: string): string {
-  const params = new URLSearchParams({
-    product: "water_level",
-    date: "latest",
-    datum: "MLLW",
-    station: providerStationId(stationId),
-    time_zone: "gmt",
-    units: "english",
-    format: "json",
-    application: "windcast",
-  });
-  return `${COOPS_DATA_BASE_URL}?${params}`;
+  return coopsWaterLevelUrl(stationId, { date: "latest" });
 }
 
 export function coopsRecentWaterLevelUrl(stationId: string): string {
-  const params = new URLSearchParams({
-    product: "water_level",
-    range: "3",
-    datum: "MLLW",
-    station: providerStationId(stationId),
-    time_zone: "gmt",
-    units: "english",
-    format: "json",
-    application: "windcast",
-  });
-  return `${COOPS_DATA_BASE_URL}?${params}`;
+  return coopsWaterLevelUrl(stationId, { range: "3" });
 }
 
 export function coopsStationPageUrl(stationId: string): string {
@@ -60,4 +40,21 @@ export function stationPageUrl(provider: ObservationProviderId, stationId: strin
   if (provider === "ndbc") return ndbcStationPageUrl(stationId);
   if (provider === "coops") return coopsStationPageUrl(stationId);
   return undefined;
+}
+
+function coopsWaterLevelUrl(
+  stationId: string,
+  selector: { date: "latest" } | { range: "3" }
+): string {
+  const params = new URLSearchParams({
+    product: "water_level",
+    datum: "MLLW",
+    station: providerStationId(stationId),
+    time_zone: "gmt",
+    units: "english",
+    format: "json",
+    application: "windcast",
+    ...selector,
+  });
+  return `${COOPS_DATA_BASE_URL}?${params}`;
 }

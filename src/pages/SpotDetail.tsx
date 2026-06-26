@@ -10,6 +10,7 @@ import { usePreferences } from "../hooks/usePreferences";
 import { useSpots } from "../hooks/useSpots";
 import {
   calculateForecastConfidence,
+  formatTideWater,
   getObservationProvider,
   preferTrustedStation,
   type ForecastConfidence,
@@ -277,12 +278,4 @@ function Meta({ label, children }: { label: string; children: React.ReactNode })
       <div className="mt-0.5">{children}</div>
     </div>
   );
-}
-
-function formatTideWater(observation: StationObservation): string {
-  const state =
-    observation.tideState && observation.tideState !== "unknown"
-      ? `${observation.tideState[0].toUpperCase()}${observation.tideState.slice(1)}`
-      : "Water";
-  return `${state} · ${observation.waterLevelFt} ft ${observation.waterLevelDatum ?? "MLLW"}`;
 }

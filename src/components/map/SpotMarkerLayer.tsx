@@ -73,36 +73,30 @@ export default function SpotMarkerLayer({ hourOffset, onSelectSpot }: Props) {
 
   useEffect(() => {
     const controller = new AbortController();
-    const observationProvider = getObservationProvider();
-    setStates(spots.map((spot) => ({ spot, loading: true })));
+    setStates((prev) =>
+      spots.map((spot) => ({
+        ...prev.find((state) => state.spot.id === spot.id),
+        spot,
+        current: undefined,
+        score: undefined,
+        forecastMeta: undefined,
+        loading: true,
+        error: false,
+      }))
+    );
     Promise.all(
       spots.map(async (spot) => {
-        let station: ObservationStation | undefined;
-        let observation: StationObservation | null = null;
         try {
           const result = await getHourlyForecastResult(spot, hourOffset + 1, {
             signal: controller.signal,
           });
           const hours = result.hours;
           const current = hours[hourOffset] ?? hours[0];
-          try {
-            const stations = await observationProvider.getStationsNear(spot.latitude, spot.longitude, 75);
-            station = preferTrustedStation(stations, spot.trustedStationIds);
-            observation = station ? await observationProvider.getLatestObservation(station) : null;
-          } catch (error) {
-            console.error("Failed to load spot marker observation.", {
-              spotId: spot.id,
-              error,
-            });
-          }
           return {
             spot,
             current,
             score: current ? scoreHour(current, spot) : undefined,
             forecastMeta: result.meta,
-            confidence: calculateForecastConfidence(current, observation),
-            station,
-            observation,
             loading: false,
           } satisfies SpotMarkerState;
         } catch (error) {
@@ -113,12 +107,53 @@ export default function SpotMarkerLayer({ hourOffset, onSelectSpot }: Props) {
         }
       })
     ).then((result) => {
-      if (!controller.signal.aborted) setStates(result);
+      if (!controller.signal.aborted) {
+        setStates((prev) => mergeSpotStates(spots, prev, result));
+      }
     });
     return () => {
       controller.abort();
     };
   }, [spots, hourOffset]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const observationProvider = getObservationProvider();
+    Promise.all(
+      spots.map(async (spot) => {
+        let station: ObservationStation | undefined;
+        let observation: StationObservation | null = null;
+        try {
+          const stations = await observationProvider.getStationsNear(spot.latitude, spot.longitude, 75, {
+            signal: controller.signal,
+          });
+          station = preferTrustedStation(stations, spot.trustedStationIds);
+          observation = station
+            ? await observationProvider.getLatestObservation(station, { signal: controller.signal })
+            : null;
+        } catch (error) {
+          if (!isAbortError(error)) {
+            console.error("Failed to load spot marker observation.", {
+              spotId: spot.id,
+              error,
+            });
+          }
+        }
+        return {
+          spot,
+          station,
+          observation,
+        } satisfies SpotMarkerState;
+      })
+    ).then((result) => {
+      if (!controller.signal.aborted) {
+        setStates((prev) => mergeSpotStates(spots, prev, result));
+      }
+    });
+    return () => {
+      controller.abort();
+    };
+  }, [spots]);
 
   return (
     <>
@@ -189,4 +224,22 @@ export default function SpotMarkerLayer({ hourOffset, onSelectSpot }: Props) {
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === "AbortError";
+}
+
+function mergeSpotStates(
+  spots: Spot[],
+  previousStates: SpotMarkerState[],
+  updates: SpotMarkerState[]
+): SpotMarkerState[] {
+  const previousById = new Map(previousStates.map((state) => [state.spot.id, state]));
+  const updateById = new Map(updates.map((state) => [state.spot.id, state]));
+  return spots.map((spot) => {
+    const previous = previousById.get(spot.id);
+    const update = updateById.get(spot.id);
+    const next = { ...previous, ...update, spot };
+    return {
+      ...next,
+      confidence: calculateForecastConfidence(next.current, next.observation ?? null),
+    };
+  });
 }

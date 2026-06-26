@@ -13,6 +13,7 @@ export type {
 } from "./types";
 export { calculateForecastConfidence, isObservationFresh } from "./confidence";
 export { distanceMiles, stationsWithinRadius } from "./distance";
+export { formatTideState, formatTideWater } from "./format";
 export { rawObservationUrl, stationPageUrl } from "./providerLinks";
 export { preferTrustedStation, resolveStationAlias } from "./stations";
 
