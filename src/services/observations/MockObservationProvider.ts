@@ -44,7 +44,7 @@ const STATIONS: ObservationStation[] = [
   },
 ];
 
-const OBSERVATIONS: Record<string, Omit<StationObservation, "observedAt">> = {
+const OBSERVATIONS: Record<string, Omit<StationObservation, "observedAt" | "source" | "fetchedAt">> = {
   "ndbc-bib": {
     stationId: "ndbc-bib",
     windSpeedMph: 20,
@@ -101,6 +101,8 @@ export class MockObservationProvider implements ObservationProvider {
     if (!observation) return null;
     return {
       ...observation,
+      source: station.provider,
+      fetchedAt: new Date().toISOString(),
       observedAt: new Date(Date.now() - 28 * 60 * 1000).toISOString(),
     };
   }

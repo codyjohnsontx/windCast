@@ -10,18 +10,28 @@ export type ObservationStation = {
   longitude: number;
   provider: ObservationProviderId;
   distanceMiles?: number;
+  sourceLabel?: string;
+  rawUrl?: string;
+  supportsWind?: boolean;
+  supportsWaves?: boolean;
+  supportsWaterLevel?: boolean;
+  supportsTidePredictions?: boolean;
 };
 
 export type StationObservation = {
   stationId: string;
   observedAt: string;
+  source: ObservationProviderId;
+  rawUrl?: string;
+  fetchedAt: string;
   windSpeedMph?: number;
   windGustMph?: number;
   windDirection?: string;
   waveHeightFt?: number;
   wavePeriodSeconds?: number;
   waterLevelFt?: number;
-  tideState?: "rising" | "falling" | "high" | "low";
+  waterLevelDatum?: "MLLW" | "MSL" | string;
+  tideState?: "rising" | "falling" | "high" | "low" | "unknown";
   airTemperatureF?: number;
   waterTemperatureF?: number;
 };

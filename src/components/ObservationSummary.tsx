@@ -35,18 +35,28 @@ export default function ObservationSummary({
     <div className="text-sm">
       <div className="flex flex-wrap items-center gap-2">
         <ConfidenceBadge label={confidence.label} />
-        <span className="text-ink-muted">{station.name}</span>
+        <span className="text-ink-muted">
+          {station.name} · {station.sourceLabel ?? station.provider}
+        </span>
       </div>
-      <div className="mt-2 text-ink-text">
-        Station{" "}
-        {observation.windSpeedMph !== undefined
-          ? formatWind(observation.windSpeedMph, windUnit)
-          : "--"}
-        {observation.windGustMph !== undefined && (
-          <span className="text-ink-muted"> g {formatWind(observation.windGustMph, windUnit)}</span>
-        )}
-        {observation.windDirection && <span className="text-ink-muted"> {observation.windDirection}</span>}
-      </div>
+      {(observation.windSpeedMph !== undefined || !compact) && (
+        <div className="mt-2 text-ink-text">
+          Station{" "}
+          {observation.windSpeedMph !== undefined
+            ? formatWind(observation.windSpeedMph, windUnit)
+            : "--"}
+          {observation.windGustMph !== undefined && (
+            <span className="text-ink-muted"> g {formatWind(observation.windGustMph, windUnit)}</span>
+          )}
+          {observation.windDirection && <span className="text-ink-muted"> {observation.windDirection}</span>}
+        </div>
+      )}
+      {compact && observation.waterLevelFt !== undefined && (
+        <div className="mt-2 text-xs text-ink-muted">
+          {formatTideState(observation.tideState)} · {observation.waterLevelFt} ft{" "}
+          {observation.waterLevelDatum ?? "MLLW"}
+        </div>
+      )}
       {!compact && (
         <div className="mt-1 text-xs text-ink-muted">
           {formatAge(observation.observedAt)}
@@ -56,6 +66,15 @@ export default function ObservationSummary({
           {confidence.windDirectionDeltaDegrees !== undefined && (
             <> · {Math.round(confidence.windDirectionDeltaDegrees)} deg</>
           )}
+          {observation.rawUrl && (
+            <>
+              {" "}
+              ·{" "}
+              <a href={observation.rawUrl} target="_blank" rel="noreferrer" className="underline">
+                raw source
+              </a>
+            </>
+          )}
         </div>
       )}
       {!compact && observation.waveHeightFt !== undefined && (
@@ -64,6 +83,17 @@ export default function ObservationSummary({
           {observation.wavePeriodSeconds !== undefined && <> · {observation.wavePeriodSeconds}s</>}
         </div>
       )}
+      {!compact && observation.waterLevelFt !== undefined && (
+        <div className="mt-1 text-xs text-ink-muted">
+          {formatTideState(observation.tideState)} · {observation.waterLevelFt} ft{" "}
+          {observation.waterLevelDatum ?? "MLLW"}
+        </div>
+      )}
     </div>
   );
+}
+
+function formatTideState(state: StationObservation["tideState"]): string {
+  if (!state || state === "unknown") return "Water";
+  return `${state[0].toUpperCase()}${state.slice(1)}`;
 }

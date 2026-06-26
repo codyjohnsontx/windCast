@@ -8,6 +8,7 @@ import ClickForecastLayer from "./ClickForecastLayer";
 import ForecastTimeline, { selectedForecastHour } from "./ForecastTimeline";
 import LayerDrawer from "./LayerDrawer";
 import ObservationMarkerLayer from "./ObservationMarkerLayer";
+import ObservationSummary from "../ObservationSummary";
 import { useMapLayers } from "../../hooks/useMapLayers";
 import { usePreferences } from "../../hooks/usePreferences";
 import { useSpots } from "../../hooks/useSpots";
@@ -143,12 +144,27 @@ function SelectedSpotPanel({
         </div>
       )}
 
+      {state.station && state.confidence && (
+        <div className="mt-3 border-t border-ink-line pt-3">
+          <ObservationSummary
+            station={state.station}
+            observation={state.observation}
+            confidence={state.confidence}
+            windUnit={windUnit}
+            compact
+          />
+        </div>
+      )}
+
       <div className="mt-4 flex gap-2">
         <Link to={`/spots/${state.spot.id}`} className="button-primary flex-1">
           View detail
         </Link>
         <Link to={`/spots/${state.spot.id}/edit`} className="button-secondary">
           Edit
+        </Link>
+        <Link to={`/spots/${state.spot.id}/stations`} className="button-secondary">
+          Station
         </Link>
       </div>
     </aside>

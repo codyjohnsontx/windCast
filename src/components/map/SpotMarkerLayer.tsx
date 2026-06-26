@@ -7,6 +7,14 @@ import type { SessionScoreLabel } from "../../types";
 import { useSpots } from "../../hooks/useSpots";
 import { usePreferences } from "../../hooks/usePreferences";
 import { getHourlyForecastResult, type ForecastSourceMeta } from "../../services/forecast";
+import {
+  calculateForecastConfidence,
+  getObservationProvider,
+  preferTrustedStation,
+  type ForecastConfidence,
+  type ObservationStation,
+  type StationObservation,
+} from "../../services/observations";
 import { scoreHour } from "../../utils/sessionScore";
 import { formatWind } from "../../utils/format";
 
@@ -46,6 +54,9 @@ export type SpotMarkerState = {
   current?: ForecastHour;
   score?: SessionScore;
   forecastMeta?: ForecastSourceMeta;
+  confidence?: ForecastConfidence;
+  station?: ObservationStation;
+  observation?: StationObservation | null;
   loading?: boolean;
   error?: boolean;
 };
@@ -62,20 +73,36 @@ export default function SpotMarkerLayer({ hourOffset, onSelectSpot }: Props) {
 
   useEffect(() => {
     const controller = new AbortController();
+    const observationProvider = getObservationProvider();
     setStates(spots.map((spot) => ({ spot, loading: true })));
     Promise.all(
       spots.map(async (spot) => {
+        let station: ObservationStation | undefined;
+        let observation: StationObservation | null = null;
         try {
           const result = await getHourlyForecastResult(spot, hourOffset + 1, {
             signal: controller.signal,
           });
           const hours = result.hours;
           const current = hours[hourOffset] ?? hours[0];
+          try {
+            const stations = await observationProvider.getStationsNear(spot.latitude, spot.longitude, 75);
+            station = preferTrustedStation(stations, spot.trustedStationIds);
+            observation = station ? await observationProvider.getLatestObservation(station) : null;
+          } catch (error) {
+            console.error("Failed to load spot marker observation.", {
+              spotId: spot.id,
+              error,
+            });
+          }
           return {
             spot,
             current,
             score: current ? scoreHour(current, spot) : undefined,
             forecastMeta: result.meta,
+            confidence: calculateForecastConfidence(current, observation),
+            station,
+            observation,
             loading: false,
           } satisfies SpotMarkerState;
         } catch (error) {
