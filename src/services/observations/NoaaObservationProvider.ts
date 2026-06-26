@@ -240,5 +240,5 @@ function throwIfAborted(signal: AbortSignal | undefined): void {
 }
 
 function isAbortError(error: unknown): boolean {
-  return error instanceof DOMException && error.name === "AbortError";
+  return Boolean(error && typeof error === "object" && "name" in error && error.name === "AbortError");
 }

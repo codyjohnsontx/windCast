@@ -126,6 +126,7 @@ export default function SpotMarkerLayer({ hourOffset, onSelectSpot }: Props) {
         spot,
         station: undefined,
         observation: null,
+        confidence: undefined,
       }))
     );
     Promise.all(
