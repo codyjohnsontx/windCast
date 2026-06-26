@@ -17,18 +17,19 @@ import {
   type StationObservation,
 } from "../services/observations";
 import { bestUpcomingHour, scoreHour } from "../utils/sessionScore";
-import { formatDayLabel, formatRange, formatWind } from "../utils/format";
+import { formatAge, formatDayLabel, formatRange, formatWind } from "../utils/format";
 
 export default function SpotDetail() {
   const { id } = useParams();
-  const { getSpot } = useSpots();
+  const { getSpot, upsertSpot } = useSpots();
   const { preferences } = usePreferences();
   const spot = getSpot(id);
-  const { data, loading, error, refetch } = useForecast(spot, 48);
+  const { data, meta, loading, error, refetch } = useForecast(spot, 48);
   const bestWindow = data && spot ? bestUpcomingHour(data, spot, 48) : null;
   const currentHour = data?.[0];
   const currentScore = currentHour && spot ? scoreHour(currentHour, spot) : undefined;
   const [station, setStation] = useState<ObservationStation | undefined>();
+  const [stations, setStations] = useState<ObservationStation[]>([]);
   const [observation, setObservation] = useState<StationObservation | null>(null);
   const confidence: ForecastConfidence = calculateForecastConfidence(currentHour, observation);
 
@@ -48,17 +49,25 @@ export default function SpotDetail() {
     if (!spot) return;
     let cancelled = false;
     setStation(undefined);
+    setStations([]);
     setObservation(null);
     const provider = getObservationProvider();
     provider
       .getStationsNear(spot.latitude, spot.longitude, 75)
-      .then(async (stations) => {
-        const nextStation = preferTrustedStation(stations, spot.trustedStationIds);
-        const nextObservation = nextStation
-          ? await provider.getLatestObservation(nextStation)
-          : null;
+      .then(async (nextStations) => {
+        if (cancelled) return;
+        const nextStation = preferTrustedStation(nextStations, spot.trustedStationIds);
+        setStations(nextStations);
+        setStation(nextStation);
+        let nextObservation: StationObservation | null = null;
+        try {
+          nextObservation = nextStation
+            ? await provider.getLatestObservation(nextStation)
+            : null;
+        } catch {
+          nextObservation = null;
+        }
         if (!cancelled) {
-          setStation(nextStation);
           setObservation(nextObservation);
         }
       })
@@ -132,6 +141,22 @@ export default function SpotDetail() {
         </div>
       )}
 
+      {!loading && !error && meta?.status !== "ready" && (
+        <div className="card mb-5 p-4 text-sm">
+          <div className="font-semibold text-score-maybe">Forecast source degraded</div>
+          <p className="mt-1 text-ink-muted">
+            {meta?.message ?? "Showing fallback forecast data."}
+          </p>
+          <div className="mt-2 text-xs text-ink-muted">
+            Source: {meta?.source}
+            {meta?.fetchedAt && <> · updated {formatAge(meta.fetchedAt)}</>}
+          </div>
+          <button type="button" onClick={refetch} className="button-secondary mt-3">
+            Retry live forecast
+          </button>
+        </div>
+      )}
+
       {!loading && !error && currentHour && currentScore && (
         <section className="card p-4 mb-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -166,6 +191,27 @@ export default function SpotDetail() {
               windUnit={preferences.windUnit}
             />
           </div>
+          {stations.length > 0 && (
+            <div className="mt-3 border-t border-ink-line pt-3">
+              <div className="text-[10px] uppercase tracking-wider text-ink-muted">Trusted station</div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {stations.slice(0, 3).map((candidate) => {
+                  const trusted = spot.trustedStationIds?.[0] === candidate.id;
+                  return (
+                    <button
+                      key={candidate.id}
+                      type="button"
+                      aria-pressed={trusted}
+                      className={trusted ? "button-primary" : "button-secondary"}
+                      onClick={() => upsertSpot({ ...spot, trustedStationIds: [candidate.id] })}
+                    >
+                      {candidate.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           {currentScore.reasons.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
               {currentScore.reasons.map((reason) => (

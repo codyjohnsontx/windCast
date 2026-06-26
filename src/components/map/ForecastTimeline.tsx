@@ -17,14 +17,22 @@ export function selectedForecastHour(value: ForecastTimelineSelection, now = new
 }
 
 export default function ForecastTimeline({ value, onChange }: Props) {
+  const nowSelected = value.dayOffset === 0 && value.hourOffset === 0;
+
   return (
-    <div className="absolute bottom-3 left-3 right-16 z-[500] rounded-lg border border-ink-line bg-ink-panel/95 p-2 shadow-lg backdrop-blur">
+    <div
+      className="absolute bottom-3 left-3 right-16 z-[500] rounded-lg border border-ink-line bg-ink-panel/95 p-2 shadow-lg backdrop-blur"
+      role="group"
+      aria-label="Forecast time"
+    >
       <div className="flex items-center gap-2 overflow-x-auto">
         <button
           type="button"
           onClick={() => onChange({ dayOffset: 0, hourOffset: 0 })}
+          aria-pressed={nowSelected}
+          aria-label="Show current forecast"
           className={`h-8 shrink-0 rounded px-3 text-xs font-semibold ${
-            selectedForecastHour(value) === 0 ? "bg-ink-text text-ink-base" : "text-ink-muted"
+            nowSelected ? "bg-ink-text text-ink-base" : "text-ink-muted"
           }`}
         >
           Now
@@ -35,8 +43,10 @@ export default function ForecastTimeline({ value, onChange }: Props) {
             key={dayOffset}
             type="button"
             onClick={() => onChange({ dayOffset, hourOffset: value.hourOffset || 12 })}
+            aria-pressed={value.dayOffset === dayOffset && !nowSelected}
+            aria-label={`Show ${dayLabel(dayOffset)} forecast`}
             className={`h-8 shrink-0 rounded px-3 text-xs font-semibold ${
-              value.dayOffset === dayOffset && selectedForecastHour(value) !== 0
+              value.dayOffset === dayOffset && !nowSelected
                 ? "bg-ink-text text-ink-base"
                 : "text-ink-muted"
             }`}
@@ -51,8 +61,10 @@ export default function ForecastTimeline({ value, onChange }: Props) {
             key={hourOffset}
             type="button"
             onClick={() => onChange({ dayOffset: value.dayOffset, hourOffset })}
+            aria-pressed={value.hourOffset === hourOffset && !nowSelected}
+            aria-label={`Show forecast at ${hourLabel(hourOffset)}`}
             className={`h-7 shrink-0 rounded px-2 text-[11px] font-semibold ${
-              value.hourOffset === hourOffset && selectedForecastHour(value) !== 0
+              value.hourOffset === hourOffset && !nowSelected
                 ? "bg-score-good/15 text-score-good ring-1 ring-score-good/40"
                 : "text-ink-muted"
             }`}

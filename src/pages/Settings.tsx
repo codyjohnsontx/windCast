@@ -12,10 +12,11 @@ const UNIT_OPTIONS: Array<{ value: UnitSystem; label: string }> = [
 ];
 
 export default function Settings() {
-  const { exportSpots, replaceSpots, resetToSeed } = useSpots();
-  const { preferences, setWindUnit } = usePreferences();
+  const { exportSpots, replaceSpots, resetToSeed, storageIssue: spotStorageIssue } = useSpots();
+  const { preferences, storageIssue: preferenceStorageIssue, setWindUnit } = usePreferences();
   const provider = getForecastProvider();
   const [importText, setImportText] = useState("");
+  const [importPreview, setImportPreview] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   function exportData() {
@@ -31,10 +32,16 @@ export default function Settings() {
   function importData() {
     try {
       const spots = validateSpots(JSON.parse(importText));
+      if (!importPreview) {
+        setImportPreview(`Ready to replace saved spots with ${spots.length} imported spots.`);
+        return;
+      }
       replaceSpots(spots);
       setImportText("");
+      setImportPreview(null);
       setMessage(`Imported ${spots.length} spots.`);
     } catch (err) {
+      setImportPreview(null);
       setMessage(err instanceof Error ? err.message : "Could not import spots.");
     }
   }
@@ -55,6 +62,11 @@ export default function Settings() {
           Configure via <code className="text-ink-text">VITE_FORECAST_PROVIDER</code> in{" "}
           <code className="text-ink-text">.env.local</code>.
         </p>
+        {provider.id !== "mock" && (
+          <p className="mt-2 rounded-md border border-score-maybe/40 bg-score-maybe/10 px-3 py-2 text-xs text-score-maybe">
+            If live forecasts fail, Windcast falls back to cache or demo data and labels it in the app.
+          </p>
+        )}
         <div className="mt-3 flex items-center justify-between gap-3 text-sm">
           <span className="text-ink-muted">Cache TTL: {forecastCacheTtlMinutes()} min</span>
           <button
@@ -70,7 +82,7 @@ export default function Settings() {
         </div>
       </section>
 
-      <section className="card p-4 mb-4">
+      <section className="card p-4 mb-8">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-ink-muted">
           Units
         </h2>
@@ -114,13 +126,23 @@ export default function Settings() {
         <textarea
           className="input mt-3 min-h-28 resize-y text-xs"
           value={importText}
-          onChange={(event) => setImportText(event.target.value)}
+          onChange={(event) => {
+            setImportText(event.target.value);
+            setImportPreview(null);
+          }}
           placeholder="Paste exported spots JSON"
         />
+        {importPreview && <div className="mt-2 text-xs text-score-maybe">{importPreview}</div>}
         <button type="button" onClick={importData} className="button-primary mt-3" disabled={!importText.trim()}>
-          Import spots
+          {importPreview ? "Confirm import" : "Preview import"}
         </button>
       </section>
+
+      {(spotStorageIssue || preferenceStorageIssue) && (
+        <div className="card p-3 mb-4 text-sm text-score-maybe" role="status">
+          {spotStorageIssue?.message ?? preferenceStorageIssue}
+        </div>
+      )}
 
       {message && (
         <div

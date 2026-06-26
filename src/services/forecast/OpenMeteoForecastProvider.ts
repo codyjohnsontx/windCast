@@ -1,8 +1,9 @@
 import type { ForecastHour, Spot } from "../../types";
-import { ForecastError, type ForecastProvider } from "./types";
+import { ForecastError, type ForecastProvider, type ForecastRequestOptions } from "./types";
 import { celsiusToFahrenheit, degreesToCompass, mpsToMph } from "./normalize";
+import { parseTimeoutMs } from "../../utils/env";
 
-const REQUEST_TIMEOUT_MS = 10_000;
+const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
 
 /**
  * Open-Meteo provider stub.
@@ -30,7 +31,11 @@ const REQUEST_TIMEOUT_MS = 10_000;
 export class OpenMeteoForecastProvider implements ForecastProvider {
   readonly id = "open-meteo";
 
-  async getHourlyForecast(spot: Spot, hours = 48): Promise<ForecastHour[]> {
+  async getHourlyForecast(
+    spot: Spot,
+    hours = 48,
+    options?: ForecastRequestOptions
+  ): Promise<ForecastHour[]> {
     validateHours(hours);
 
     const params = new URLSearchParams({
@@ -44,10 +49,14 @@ export class OpenMeteoForecastProvider implements ForecastProvider {
     });
 
     const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const abortFromSignal = () => controller.abort();
+    if (options?.signal?.aborted) controller.abort();
+    options?.signal?.addEventListener("abort", abortFromSignal, { once: true });
+    const timeoutId = window.setTimeout(() => controller.abort(), requestTimeoutMs());
 
     try {
-      const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`, {
+      const baseUrl = (import.meta.env.VITE_OPEN_METEO_BASE_URL ?? "https://api.open-meteo.com/v1").replace(/\/$/, "");
+      const response = await fetch(`${baseUrl}/forecast?${params}`, {
         signal: controller.signal,
       });
       if (!response.ok) {
@@ -92,6 +101,7 @@ export class OpenMeteoForecastProvider implements ForecastProvider {
       throw new ForecastError("Could not load Open-Meteo forecast.", this.id, err);
     } finally {
       window.clearTimeout(timeoutId);
+      options?.signal?.removeEventListener("abort", abortFromSignal);
     }
   }
 }
@@ -116,6 +126,10 @@ function validateHours(hours: number): void {
   if (!Number.isInteger(hours) || !Number.isFinite(hours) || hours <= 0) {
     throw new RangeError("Forecast hours must be a finite integer greater than 0.");
   }
+}
+
+function requestTimeoutMs(): number {
+  return parseTimeoutMs(import.meta.env.VITE_OPEN_METEO_TIMEOUT_MS, DEFAULT_REQUEST_TIMEOUT_MS);
 }
 
 function validateUtcOffsetSeconds(value: unknown): number {

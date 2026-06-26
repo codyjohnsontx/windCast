@@ -3,7 +3,7 @@ import type {
   ObservationStation,
   StationObservation,
 } from "../services/observations";
-import { formatWind } from "../utils/format";
+import { formatAge, formatWind } from "../utils/format";
 import type { UnitSystem } from "../hooks/usePreferences";
 import ConfidenceBadge from "./ConfidenceBadge";
 
@@ -66,10 +66,4 @@ export default function ObservationSummary({
       )}
     </div>
   );
-}
-
-function formatAge(iso: string): string {
-  const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
-  if (minutes < 60) return `${minutes} min ago`;
-  return `${Math.round(minutes / 60)} hr ago`;
 }

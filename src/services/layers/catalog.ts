@@ -7,6 +7,7 @@ export const MAP_LAYERS: MapLayerDefinition[] = [
     category: "planning",
     defaultEnabled: true,
     requiresNetwork: false,
+    implemented: true,
     description: "Score-colored saved spot markers.",
   },
   {
@@ -15,7 +16,10 @@ export const MAP_LAYERS: MapLayerDefinition[] = [
     category: "wind",
     defaultEnabled: true,
     requiresNetwork: true,
-    description: "Animated wind flow.",
+    implemented: true,
+    demo: true,
+    lastUpdated: "Synthetic sample grid",
+    description: "Animated wind flow. Demo unless NOAA GFS proxy is configured.",
   },
   {
     id: "observations",
@@ -23,6 +27,9 @@ export const MAP_LAYERS: MapLayerDefinition[] = [
     category: "observations",
     defaultEnabled: true,
     requiresNetwork: true,
+    implemented: true,
+    demo: true,
+    lastUpdated: "Manual sample observations",
     description: "Nearby real-world wind and marine observations.",
   },
   {
@@ -31,6 +38,7 @@ export const MAP_LAYERS: MapLayerDefinition[] = [
     category: "weather",
     defaultEnabled: false,
     requiresNetwork: true,
+    implemented: false,
     description: "Future precipitation radar layer.",
     disabledReason: "Radar will be added after confidence tools are stable.",
   },
@@ -40,8 +48,9 @@ export const MAP_LAYERS: MapLayerDefinition[] = [
     category: "marine",
     defaultEnabled: false,
     requiresNetwork: true,
-    description: "Future wave, swell, tide, and current layers.",
-    disabledReason: "Marine layers will be added after observation confidence.",
+    implemented: false,
+    description: "Future NOAA tide, water level, wave, swell, and current layers.",
+    disabledReason: "NOAA CO-OPS tide and water level should be the next real marine layer.",
   },
 ];
 

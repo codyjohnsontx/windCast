@@ -66,6 +66,23 @@ export default function LayerDrawer({
                   <span>
                     <span className="block text-sm font-semibold">{layer.label}</span>
                     <span className="block text-xs text-ink-muted">{layer.description}</span>
+                    <span className="mt-1 flex flex-wrap gap-1.5 text-[11px]">
+                      {layer.demo && (
+                        <span className="rounded-full bg-score-maybe/10 px-2 py-0.5 text-score-maybe ring-1 ring-score-maybe/30">
+                          Demo data
+                        </span>
+                      )}
+                      {layer.implemented && !layer.demo && (
+                        <span className="rounded-full bg-score-good/10 px-2 py-0.5 text-score-good ring-1 ring-score-good/30">
+                          Live in app
+                        </span>
+                      )}
+                      {layer.lastUpdated && (
+                        <span className="rounded-full bg-ink-base/60 px-2 py-0.5 text-ink-muted ring-1 ring-ink-line">
+                          {layer.lastUpdated}
+                        </span>
+                      )}
+                    </span>
                     {layer.disabledReason && (
                       <span className="mt-1 block text-xs text-score-poor">{layer.disabledReason}</span>
                     )}

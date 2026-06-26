@@ -7,11 +7,12 @@ import type {
   ObservationStation,
   StationObservation,
 } from "../services/observations";
+import type { ForecastSourceMeta } from "../services/forecast";
 import ConfidenceBadge from "./ConfidenceBadge";
 import ScoreBadge from "./ScoreBadge";
 import SportTagList from "./SportTagList";
 import WindDirectionIcon from "./WindDirectionIcon";
-import { formatDayLabel, formatHour, formatWind } from "../utils/format";
+import { formatAge, formatDayLabel, formatHour, formatWind } from "../utils/format";
 
 type Props = {
   spot: Spot;
@@ -21,6 +22,8 @@ type Props = {
   confidence?: ForecastConfidence;
   observation?: StationObservation | null;
   station?: ObservationStation;
+  stationDistanceMiles?: number;
+  forecastMeta?: ForecastSourceMeta;
   loading?: boolean;
 };
 
@@ -32,6 +35,8 @@ export default function SpotCard({
   confidence,
   observation,
   station,
+  stationDistanceMiles,
+  forecastMeta,
   loading,
 }: Props) {
   const { preferences } = usePreferences();
@@ -63,6 +68,16 @@ export default function SpotCard({
           {confidence.reasons[0] && (
             <span className="text-xs text-ink-muted">{confidence.reasons[0]}</span>
           )}
+        </div>
+      )}
+
+      {!loading && forecastMeta && (
+        <div className="mt-2 text-xs text-ink-muted">
+          {forecastMeta.status === "ready" ? "Forecast" : "Fallback"} from {forecastMeta.source}
+          {forecastMeta.isFallback && <> · verify before loading gear</>}
+          {forecastMeta.source === "cache" || forecastMeta.source === "stale cache"
+            ? <> · updated {formatAge(forecastMeta.fetchedAt)}</>
+            : null}
         </div>
       )}
 
@@ -111,6 +126,7 @@ export default function SpotCard({
           {formatWind(currentHour.windGustMph, preferences.windUnit)} {currentHour.windDirection}
           <br />
           {station?.name ?? "Station"}{" "}
+          {stationDistanceMiles !== undefined && <>({Math.round(stationDistanceMiles)} mi) </>}
           {observation.windSpeedMph !== undefined
             ? formatWind(observation.windSpeedMph, preferences.windUnit)
             : "--"}
@@ -118,6 +134,15 @@ export default function SpotCard({
             <> g {formatWind(observation.windGustMph, preferences.windUnit)}</>
           )}{" "}
           {observation.windDirection}
+          {confidence?.windSpeedDeltaMph !== undefined && (
+            <>
+              <br />
+              Delta {formatWind(confidence.windSpeedDeltaMph, preferences.windUnit)}
+              {confidence.windDirectionDeltaDegrees !== undefined && (
+                <> · {Math.round(confidence.windDirectionDeltaDegrees)} deg</>
+              )}
+            </>
+          )}
         </div>
       )}
     </Link>

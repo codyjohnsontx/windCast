@@ -18,6 +18,9 @@ export type MapLayerDefinition = {
   category: MapLayerCategory;
   defaultEnabled: boolean;
   requiresNetwork: boolean;
+  implemented: boolean;
+  demo?: boolean;
+  lastUpdated?: string;
   description: string;
   disabledReason?: string;
 };

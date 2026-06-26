@@ -12,4 +12,10 @@ describe("layer catalog", () => {
     expect(DEFAULT_LAYER_STATE["radar-placeholder"]).toBe(false);
     expect(DEFAULT_LAYER_STATE["marine-placeholder"]).toBe(false);
   });
+
+  it("labels demo layers so synthetic data is visible to users", () => {
+    expect(MAP_LAYERS.find((layer) => layer.id === "wind-particles")?.demo).toBe(true);
+    expect(MAP_LAYERS.find((layer) => layer.id === "observations")?.demo).toBe(true);
+    expect(MAP_LAYERS.find((layer) => layer.id === "marine-placeholder")?.implemented).toBe(false);
+  });
 });

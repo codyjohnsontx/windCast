@@ -5,21 +5,47 @@ import type { SportType, Spot, SpotEnvironment } from "../types";
 
 const STORAGE_KEY = "windcast.spots";
 
-function loadSpots(): Spot[] {
-  if (typeof window === "undefined") return MOCK_SPOTS;
-  const raw = window.localStorage.getItem(STORAGE_KEY);
+export type StorageIssue = {
+  type: "read" | "write" | "recovered";
+  message: string;
+};
+
+type LoadSpotsResult = {
+  spots: Spot[];
+  issue: StorageIssue | null;
+};
+
+function loadSpots(): LoadSpotsResult {
+  if (typeof window === "undefined") return { spots: MOCK_SPOTS, issue: null };
+  let raw: string | null;
+  try {
+    raw = window.localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return {
+      spots: MOCK_SPOTS,
+      issue: { type: "read", message: "Saved spots could not be read. Sample spots are shown in memory." },
+    };
+  }
   if (!raw) {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(MOCK_SPOTS));
     } catch {
-      // Ignore storage failures; we'll still serve in-memory mocks.
+      return {
+        spots: MOCK_SPOTS,
+        issue: { type: "write", message: "Saved spots could not be persisted. Export a backup before closing." },
+      };
     }
-    return MOCK_SPOTS;
+    return { spots: MOCK_SPOTS, issue: null };
   }
 
   try {
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return MOCK_SPOTS;
+    if (!Array.isArray(parsed)) {
+      return {
+        spots: MOCK_SPOTS,
+        issue: { type: "recovered", message: "Saved spot data was not an array, so sample spots are shown in memory." },
+      };
+    }
     const validSpots = parsed.flatMap((item) => {
       try {
         return [validateSpot(item)];
@@ -27,24 +53,43 @@ function loadSpots(): Spot[] {
         return [];
       }
     });
-    return validSpots.length ? validSpots : MOCK_SPOTS;
+    if (parsed.length === 0) {
+      return { spots: [], issue: null };
+    }
+    if (validSpots.length) {
+      return {
+        spots: validSpots,
+        issue: validSpots.length === parsed.length
+          ? null
+          : { type: "recovered", message: "Some saved spots were invalid and were skipped." },
+      };
+    }
+    return {
+      spots: MOCK_SPOTS,
+      issue: { type: "recovered", message: "Saved spots were invalid, so sample spots are shown in memory." },
+    };
   } catch {
-    // Preserve unparseable user data in localStorage and serve mocks in memory.
-    return MOCK_SPOTS;
+    return {
+      spots: MOCK_SPOTS,
+      issue: { type: "read", message: "Saved spot data could not be read. It was preserved in storage; export or reset from Settings." },
+    };
   }
 }
 
-function persist(spots: Spot[]): void {
-  if (typeof window === "undefined") return;
+function persist(spots: Spot[]): StorageIssue | null {
+  if (typeof window === "undefined") return null;
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(spots));
+    return null;
   } catch {
-    // Ignore.
+    return { type: "write", message: "Saved spots could not be persisted. Export a backup before closing." };
   }
 }
 
 export function useSpots() {
-  const [spots, setSpots] = useState<Spot[]>(() => loadSpots());
+  const [initial] = useState<LoadSpotsResult>(() => loadSpots());
+  const [spots, setSpots] = useState<Spot[]>(initial.spots);
+  const [storageIssue, setStorageIssue] = useState<StorageIssue | null>(initial.issue);
   const didHydrate = useRef(false);
 
   useEffect(() => {
@@ -52,8 +97,19 @@ export function useSpots() {
       didHydrate.current = true;
       return;
     }
-    persist(spots);
+    setStorageIssue(persist(spots));
   }, [spots]);
+
+  useEffect(() => {
+    function sync(event: StorageEvent) {
+      if (event.key !== STORAGE_KEY) return;
+      const next = loadSpots();
+      setSpots(next.spots);
+      setStorageIssue(next.issue);
+    }
+    window.addEventListener("storage", sync);
+    return () => window.removeEventListener("storage", sync);
+  }, []);
 
   const getSpot = useCallback(
     (id: string | undefined) => (id ? spots.find((s) => s.id === id) : undefined),
@@ -84,7 +140,7 @@ export function useSpots() {
 
   const exportSpots = useCallback(() => JSON.stringify(spots, null, 2), [spots]);
 
-  return { spots, getSpot, upsertSpot, removeSpot, resetToSeed, replaceSpots, exportSpots };
+  return { spots, storageIssue, getSpot, upsertSpot, removeSpot, resetToSeed, replaceSpots, exportSpots };
 }
 
 export function validateSpots(value: unknown): Spot[] {

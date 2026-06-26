@@ -1,29 +1,40 @@
-import { useCallback, useEffect, useState } from "react";
-import { getForecastProvider } from "../services/forecast";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { getHourlyForecastResult, type ForecastSourceMeta } from "../services/forecast";
 import type { ForecastHour, Spot } from "../types";
 
 type State = {
   data: ForecastHour[] | null;
+  meta: ForecastSourceMeta | null;
   loading: boolean;
   error: Error | null;
 };
 
 export function useForecast(spot: Spot | undefined, hours = 48) {
-  const [state, setState] = useState<State>({ data: null, loading: !!spot, error: null });
+  const [state, setState] = useState<State>({ data: null, meta: null, loading: !!spot, error: null });
+  const activeController = useRef<AbortController | null>(null);
 
   const fetchForecast = useCallback(
     async (target: Spot) => {
-      setState({ data: null, loading: true, error: null });
+      activeController.current?.abort();
+      const controller = new AbortController();
+      activeController.current = controller;
+      setState({ data: null, meta: null, loading: true, error: null });
       try {
-        const provider = getForecastProvider();
-        const data = await provider.getHourlyForecast(target, hours);
-        setState({ data, loading: false, error: null });
+        const result = await getHourlyForecastResult(target, hours, { signal: controller.signal });
+        if (controller.signal.aborted || activeController.current !== controller) return;
+        setState({ data: result.hours, meta: result.meta, loading: false, error: null });
       } catch (err) {
+        if (controller.signal.aborted || activeController.current !== controller) return;
         setState({
           data: null,
+          meta: null,
           loading: false,
           error: err instanceof Error ? err : new Error(String(err)),
         });
+      } finally {
+        if (activeController.current === controller) {
+          activeController.current = null;
+        }
       }
     },
     [hours]
@@ -31,10 +42,14 @@ export function useForecast(spot: Spot | undefined, hours = 48) {
 
   useEffect(() => {
     if (!spot) {
-      setState({ data: null, loading: false, error: null });
+      activeController.current?.abort();
+      setState({ data: null, meta: null, loading: false, error: null });
       return;
     }
     void fetchForecast(spot);
+    return () => {
+      activeController.current?.abort();
+    };
   }, [spot, fetchForecast]);
 
   const refetch = useCallback(() => {

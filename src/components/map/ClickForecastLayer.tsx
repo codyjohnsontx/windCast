@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Popup, useMapEvents } from "react-leaflet";
 import type { LatLng } from "leaflet";
 import { Link } from "react-router-dom";
-import { getForecastProvider } from "../../services/forecast";
+import { getHourlyForecastResult, type ForecastSourceMeta } from "../../services/forecast";
 import { usePreferences } from "../../hooks/usePreferences";
 import type { ForecastHour, Spot } from "../../types";
 import { formatWind } from "../../utils/format";
@@ -27,32 +27,35 @@ export default function ClickForecastLayer() {
   const { preferences } = usePreferences();
   const [latlng, setLatLng] = useState<LatLng | null>(null);
   const [hour, setHour] = useState<ForecastHour | null>(null);
+  const [meta, setMeta] = useState<ForecastSourceMeta | null>(null);
   const [loading, setLoading] = useState(false);
 
   useMapEvents({
     click(event) {
       setLatLng(event.latlng);
       setHour(null);
+      setMeta(null);
       setLoading(true);
     },
   });
 
   useEffect(() => {
     if (!latlng) return;
-    let cancelled = false;
-    getForecastProvider()
-      .getHourlyForecast(ephemeralSpotAt(latlng.lat, latlng.lng), 1)
-      .then((hours) => {
-        if (!cancelled) {
-          setHour(hours[0] ?? null);
-          setLoading(false);
-        }
+    const controller = new AbortController();
+    getHourlyForecastResult(ephemeralSpotAt(latlng.lat, latlng.lng), 1, {
+      signal: controller.signal,
+    })
+      .then((result) => {
+        setHour(result.hours[0] ?? null);
+        setMeta(result.meta);
+        setLoading(false);
       })
-      .catch(() => {
-        if (!cancelled) setLoading(false);
+      .catch((error) => {
+        if (isAbortError(error)) return;
+        setLoading(false);
       });
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [latlng]);
 
@@ -76,6 +79,11 @@ export default function ClickForecastLayer() {
                 Rain {Math.round(hour.rainChance * 100)}%
               </div>
             )}
+            {meta?.isFallback && (
+              <div style={{ fontSize: 11, color: "#92400e", marginTop: 4 }}>
+                {meta.source}
+              </div>
+            )}
           </div>
         )}
         {!loading && !hour && (
@@ -96,4 +104,8 @@ export default function ClickForecastLayer() {
       </div>
     </Popup>
   );
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
 }
