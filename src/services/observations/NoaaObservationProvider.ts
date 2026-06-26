@@ -76,6 +76,7 @@ export class NoaaObservationProvider implements ObservationProvider {
         observation = await this.manualProvider.getLatestObservation(station, options);
       }
     } catch (error) {
+      if (isAbortError(error)) throw error;
       console.error("Failed to load NOAA observation.", {
         stationId: station.id,
         provider: station.provider,
@@ -236,4 +237,8 @@ function throwIfAborted(signal: AbortSignal | undefined): void {
   if (signal?.aborted) {
     throw new DOMException("The operation was aborted.", "AbortError");
   }
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
 }

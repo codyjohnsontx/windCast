@@ -120,6 +120,14 @@ export default function SpotMarkerLayer({ hourOffset, onSelectSpot }: Props) {
   useEffect(() => {
     const controller = new AbortController();
     const observationProvider = getObservationProvider();
+    setStates((prev) =>
+      spots.map((spot) => ({
+        ...prev.find((state) => state.spot.id === spot.id),
+        spot,
+        station: undefined,
+        observation: null,
+      }))
+    );
     Promise.all(
       spots.map(async (spot) => {
         let station: ObservationStation | undefined;
