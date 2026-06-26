@@ -2,7 +2,8 @@ import type { StationObservation } from "./types";
 
 export function formatTideWater(observation: Pick<StationObservation, "tideState" | "waterLevelFt" | "waterLevelDatum">): string {
   const state = formatTideState(observation.tideState);
-  return `${state} · ${observation.waterLevelFt} ft ${observation.waterLevelDatum ?? "MLLW"}`;
+  const waterLevel = observation.waterLevelFt ?? "--";
+  return `${state} · ${waterLevel} ft ${observation.waterLevelDatum ?? "MLLW"}`;
 }
 
 export function formatTideState(state: StationObservation["tideState"]): string {

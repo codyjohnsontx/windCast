@@ -80,6 +80,7 @@ export default function SpotMarkerLayer({ hourOffset, onSelectSpot }: Props) {
         current: undefined,
         score: undefined,
         forecastMeta: undefined,
+        confidence: undefined,
         loading: true,
         error: false,
       }))

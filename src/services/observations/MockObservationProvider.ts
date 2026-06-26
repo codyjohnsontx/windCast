@@ -1,5 +1,10 @@
 import { stationsWithinRadius } from "./distance";
-import type { ObservationProvider, ObservationStation, StationObservation } from "./types";
+import type {
+  ObservationProvider,
+  ObservationRequestOptions,
+  ObservationStation,
+  StationObservation,
+} from "./types";
 
 const STATIONS: ObservationStation[] = [
   {
@@ -96,7 +101,13 @@ export class MockObservationProvider implements ObservationProvider {
     return stationsWithinRadius(STATIONS, latitude, longitude, radiusMiles);
   }
 
-  async getLatestObservation(station: ObservationStation): Promise<StationObservation | null> {
+  async getLatestObservation(
+    station: ObservationStation,
+    options?: ObservationRequestOptions
+  ): Promise<StationObservation | null> {
+    if (options?.signal?.aborted) {
+      throw new DOMException("The operation was aborted.", "AbortError");
+    }
     const observation = OBSERVATIONS[station.id];
     if (!observation) return null;
     return {

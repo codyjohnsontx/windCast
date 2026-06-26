@@ -73,7 +73,7 @@ export class NoaaObservationProvider implements ObservationProvider {
           recentPayload
         );
       } else {
-        observation = await this.manualProvider.getLatestObservation(station);
+        observation = await this.manualProvider.getLatestObservation(station, options);
       }
     } catch (error) {
       console.error("Failed to load NOAA observation.", {
