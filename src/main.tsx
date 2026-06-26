@@ -11,6 +11,7 @@ const Spots = lazy(() => import("./pages/Spots"));
 const SpotDetail = lazy(() => import("./pages/SpotDetail"));
 const SpotEdit = lazy(() => import("./pages/SpotEdit"));
 const SpotNew = lazy(() => import("./pages/SpotNew"));
+const SpotStations = lazy(() => import("./pages/SpotStations"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Map = lazy(() => import("./pages/Map"));
 
@@ -26,6 +27,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route path="spots/new" element={<SpotNew />} />
             <Route path="spots/:id" element={<SpotDetail />} />
             <Route path="spots/:id/edit" element={<SpotEdit />} />
+            <Route path="spots/:id/stations" element={<SpotStations />} />
             <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>

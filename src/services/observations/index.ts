@@ -1,4 +1,5 @@
 import { MockObservationProvider } from "./MockObservationProvider";
+import { NoaaObservationProvider } from "./NoaaObservationProvider";
 import type { ObservationProvider } from "./types";
 
 export type {
@@ -12,12 +13,15 @@ export type {
 } from "./types";
 export { calculateForecastConfidence, isObservationFresh } from "./confidence";
 export { distanceMiles, stationsWithinRadius } from "./distance";
-export { preferTrustedStation } from "./stations";
+export { formatTideState, formatTideWater } from "./format";
+export { rawObservationUrl, stationPageUrl } from "./providerLinks";
+export { preferTrustedStation, resolveStationAlias } from "./stations";
 
 let cached: ObservationProvider | null = null;
 
 export function getObservationProvider(): ObservationProvider {
   if (cached) return cached;
-  cached = new MockObservationProvider();
+  const id = (import.meta.env.VITE_OBSERVATION_PROVIDER ?? "mock").toLowerCase();
+  cached = id === "noaa" ? new NoaaObservationProvider() : new MockObservationProvider();
   return cached;
 }

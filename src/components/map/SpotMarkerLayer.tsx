@@ -7,6 +7,14 @@ import type { SessionScoreLabel } from "../../types";
 import { useSpots } from "../../hooks/useSpots";
 import { usePreferences } from "../../hooks/usePreferences";
 import { getHourlyForecastResult, type ForecastSourceMeta } from "../../services/forecast";
+import {
+  calculateForecastConfidence,
+  getObservationProvider,
+  preferTrustedStation,
+  type ForecastConfidence,
+  type ObservationStation,
+  type StationObservation,
+} from "../../services/observations";
 import { scoreHour } from "../../utils/sessionScore";
 import { formatWind } from "../../utils/format";
 
@@ -46,6 +54,9 @@ export type SpotMarkerState = {
   current?: ForecastHour;
   score?: SessionScore;
   forecastMeta?: ForecastSourceMeta;
+  confidence?: ForecastConfidence;
+  station?: ObservationStation;
+  observation?: StationObservation | null;
   loading?: boolean;
   error?: boolean;
 };
@@ -62,7 +73,18 @@ export default function SpotMarkerLayer({ hourOffset, onSelectSpot }: Props) {
 
   useEffect(() => {
     const controller = new AbortController();
-    setStates(spots.map((spot) => ({ spot, loading: true })));
+    setStates((prev) =>
+      spots.map((spot) => ({
+        ...prev.find((state) => state.spot.id === spot.id),
+        spot,
+        current: undefined,
+        score: undefined,
+        forecastMeta: undefined,
+        confidence: undefined,
+        loading: true,
+        error: false,
+      }))
+    );
     Promise.all(
       spots.map(async (spot) => {
         try {
@@ -86,12 +108,62 @@ export default function SpotMarkerLayer({ hourOffset, onSelectSpot }: Props) {
         }
       })
     ).then((result) => {
-      if (!controller.signal.aborted) setStates(result);
+      if (!controller.signal.aborted) {
+        setStates((prev) => mergeSpotStates(spots, prev, result));
+      }
     });
     return () => {
       controller.abort();
     };
   }, [spots, hourOffset]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const observationProvider = getObservationProvider();
+    setStates((prev) =>
+      spots.map((spot) => ({
+        ...prev.find((state) => state.spot.id === spot.id),
+        spot,
+        station: undefined,
+        observation: null,
+        confidence: undefined,
+      }))
+    );
+    Promise.all(
+      spots.map(async (spot) => {
+        let station: ObservationStation | undefined;
+        let observation: StationObservation | null = null;
+        try {
+          const stations = await observationProvider.getStationsNear(spot.latitude, spot.longitude, 75, {
+            signal: controller.signal,
+          });
+          station = preferTrustedStation(stations, spot.trustedStationIds);
+          observation = station
+            ? await observationProvider.getLatestObservation(station, { signal: controller.signal })
+            : null;
+        } catch (error) {
+          if (!isAbortError(error)) {
+            console.error("Failed to load spot marker observation.", {
+              spotId: spot.id,
+              error,
+            });
+          }
+        }
+        return {
+          spot,
+          station,
+          observation,
+        } satisfies SpotMarkerState;
+      })
+    ).then((result) => {
+      if (!controller.signal.aborted) {
+        setStates((prev) => mergeSpotStates(spots, prev, result));
+      }
+    });
+    return () => {
+      controller.abort();
+    };
+  }, [spots]);
 
   return (
     <>
@@ -162,4 +234,22 @@ export default function SpotMarkerLayer({ hourOffset, onSelectSpot }: Props) {
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === "AbortError";
+}
+
+function mergeSpotStates(
+  spots: Spot[],
+  previousStates: SpotMarkerState[],
+  updates: SpotMarkerState[]
+): SpotMarkerState[] {
+  const previousById = new Map(previousStates.map((state) => [state.spot.id, state]));
+  const updateById = new Map(updates.map((state) => [state.spot.id, state]));
+  return spots.map((spot) => {
+    const previous = previousById.get(spot.id);
+    const update = updateById.get(spot.id);
+    const next = { ...previous, ...update, spot };
+    return {
+      ...next,
+      confidence: calculateForecastConfidence(next.current, next.observation ?? null),
+    };
+  });
 }

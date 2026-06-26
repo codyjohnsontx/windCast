@@ -15,6 +15,8 @@ function observation(overrides: Partial<StationObservation>): StationObservation
   return {
     stationId: "station",
     observedAt: "2026-06-02T11:30:00.000Z",
+    source: "manual",
+    fetchedAt: "2026-06-02T11:31:00.000Z",
     windSpeedMph: 17,
     windDirection: "SE",
     ...overrides,

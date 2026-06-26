@@ -1,5 +1,10 @@
 import { stationsWithinRadius } from "./distance";
-import type { ObservationProvider, ObservationStation, StationObservation } from "./types";
+import type {
+  ObservationProvider,
+  ObservationRequestOptions,
+  ObservationStation,
+  StationObservation,
+} from "./types";
 
 const STATIONS: ObservationStation[] = [
   {
@@ -44,7 +49,7 @@ const STATIONS: ObservationStation[] = [
   },
 ];
 
-const OBSERVATIONS: Record<string, Omit<StationObservation, "observedAt">> = {
+const OBSERVATIONS: Record<string, Omit<StationObservation, "observedAt" | "source" | "fetchedAt">> = {
   "ndbc-bib": {
     stationId: "ndbc-bib",
     windSpeedMph: 20,
@@ -96,11 +101,19 @@ export class MockObservationProvider implements ObservationProvider {
     return stationsWithinRadius(STATIONS, latitude, longitude, radiusMiles);
   }
 
-  async getLatestObservation(station: ObservationStation): Promise<StationObservation | null> {
+  async getLatestObservation(
+    station: ObservationStation,
+    options?: ObservationRequestOptions
+  ): Promise<StationObservation | null> {
+    if (options?.signal?.aborted) {
+      throw new DOMException("The operation was aborted.", "AbortError");
+    }
     const observation = OBSERVATIONS[station.id];
     if (!observation) return null;
     return {
       ...observation,
+      source: station.provider,
+      fetchedAt: new Date().toISOString(),
       observedAt: new Date(Date.now() - 28 * 60 * 1000).toISOString(),
     };
   }

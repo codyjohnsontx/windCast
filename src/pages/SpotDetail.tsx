@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Pencil } from "lucide-react";
+import { ArrowLeft, Pencil, RadioTower } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import ConfidenceBadge from "../components/ConfidenceBadge";
 import ForecastHourCard from "../components/ForecastHourCard";
@@ -10,6 +10,7 @@ import { usePreferences } from "../hooks/usePreferences";
 import { useSpots } from "../hooks/useSpots";
 import {
   calculateForecastConfidence,
+  formatTideWater,
   getObservationProvider,
   preferTrustedStation,
   type ForecastConfidence,
@@ -21,7 +22,7 @@ import { formatAge, formatDayLabel, formatRange, formatWind } from "../utils/for
 
 export default function SpotDetail() {
   const { id } = useParams();
-  const { getSpot, upsertSpot } = useSpots();
+  const { getSpot } = useSpots();
   const { preferences } = usePreferences();
   const spot = getSpot(id);
   const { data, meta, loading, error, refetch } = useForecast(spot, 48);
@@ -182,6 +183,9 @@ export default function SpotDetail() {
                   ).toLocaleTimeString(undefined, { hour: "numeric", hour12: true })}`
                 : "No usable hours"}
             </Meta>
+            {observation?.waterLevelFt !== undefined && (
+              <Meta label="Tide / water">{formatTideWater(observation)}</Meta>
+            )}
           </div>
           <div className="mt-3">
             <ObservationSummary
@@ -193,22 +197,23 @@ export default function SpotDetail() {
           </div>
           {stations.length > 0 && (
             <div className="mt-3 border-t border-ink-line pt-3">
-              <div className="text-[10px] uppercase tracking-wider text-ink-muted">Trusted station</div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {stations.slice(0, 3).map((candidate) => {
-                  const trusted = spot.trustedStationIds?.[0] === candidate.id;
-                  return (
-                    <button
-                      key={candidate.id}
-                      type="button"
-                      aria-pressed={trusted}
-                      className={trusted ? "button-primary" : "button-secondary"}
-                      onClick={() => upsertSpot({ ...spot, trustedStationIds: [candidate.id] })}
-                    >
-                      {candidate.name}
-                    </button>
-                  );
-                })}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-ink-muted">Trusted station</div>
+                  <div className="mt-1 text-sm">
+                    {station ? (
+                      <>
+                        {station.name}
+                        <span className="text-ink-muted"> · {station.sourceLabel ?? station.provider}</span>
+                      </>
+                    ) : (
+                      "No station selected"
+                    )}
+                  </div>
+                </div>
+                <Link to={`/spots/${spot.id}/stations`} className="button-secondary">
+                  <RadioTower size={16} /> Manage
+                </Link>
               </div>
             </div>
           )}
